@@ -35,6 +35,15 @@
 #
 # This pipeline never force-pushes. If on-prem has diverged, the push fails
 # loudly instead of destroying commits.
+#
+# ----------------------------------------------------------------------------
+# CURRENT STATE (2026-08-28): NOT ACTUALLY MIRRORING
+# ----------------------------------------------------------------------------
+# The build agent has no route to sourcecontrol3.promiles.com:443 and an IT
+# ticket is open. Until it is fixed this job SKIPS the push and reports
+# SucceededWithIssues - see skipWhenUnreachable in the variables below.
+# The on-prem copy is therefore stale. Remove the three skip* variables and
+# the section 3 bypass once connectivity is restored.
 # ============================================================================
 
 trigger:
@@ -69,8 +78,34 @@ variables:
   # agent does not trust and you cannot install the internal CA on the agent.
   # It disables TLS verification for this job's git calls and makes the push
   # vulnerable to interception. Installing the CA on the agent is the fix.
+  #
+  # As of 2026-08-28 this is NOT needed: sourcecontrol3 presents a public
+  # Sectigo cert for *.promiles.com that chains cleanly. Leave it 'false'.
   - name: sslNoVerify
     value: 'false'
+
+  # ------------------------------------------------------------------------
+  # TEMPORARY - remove once the IT ticket below is closed.
+  # ------------------------------------------------------------------------
+  # The build agent has no route to sourcecontrol3 on 443 (the host resolves
+  # to 10.102.30.45 and the agent sits outside that segment). Rather than fail
+  # every build in the meantime, the job reports SucceededWithIssues and skips
+  # the push when - and only when - the server is unreachable at the TCP level.
+  #
+  # This bypass is deliberately narrow. Anything that is not a connectivity
+  # failure - bad PAT, missing repo, non-fast-forward, branch policy - still
+  # fails the build, so a real problem cannot hide behind it.
+  #
+  # It also expires. After skipUntilUtc the job fails regardless, so a stalled
+  # ticket surfaces instead of the mirror silently never running.
+  - name: skipWhenUnreachable
+    value: 'true'
+
+  - name: skipUntilUtc
+    value: '2026-09-30'
+
+  - name: skipReason
+    value: 'IT ticket open: no route from build agent to sourcecontrol3.promiles.com:443'
 
 jobs:
   - job: MirrorOnPremJob
@@ -144,10 +179,69 @@ jobs:
           }
 
           # ================================================================
-          # 3. Reachability and write access
+          # 3. Connectivity probe (TEMPORARY BYPASS - see variables)
+          #    A plain TCP connect separates 'the agent cannot reach the box'
+          #    from every other failure, so the bypass below can be limited to
+          #    exactly that case. git's own 21-second timeout is also a slow
+          #    way to learn the same thing.
+          # ================================================================
+          Write-Section 'Connectivity'
+
+          $uri = [Uri] $target
+          $reachable = $false
+          $probe = New-Object System.Net.Sockets.TcpClient
+          try   { $reachable = $probe.ConnectAsync($uri.Host, $uri.Port).Wait(10000) -and $probe.Connected }
+          catch { $reachable = $false }
+          finally { $probe.Dispose() }
+
+          Write-Host ("TCP {0}:{1}   : {2}" -f $uri.Host, $uri.Port, $(if ($reachable) { 'reachable' } else { 'UNREACHABLE' }))
+
+          if (-not $reachable) {
+              $detail = @"
+          Cannot open a TCP connection to $($uri.Host):$($uri.Port) from this agent ($env:COMPUTERNAME).
+
+          The name resolves and the server is healthy from inside the network, so this is a
+          routing or firewall problem between the agent and 10.102.30.0/24 - not TLS, and not
+          the PAT. Confirm on the agent itself with:
+
+            Test-NetConnection $($uri.Host) -Port $($uri.Port)
+          "@
+
+              if ($env:SKIP_WHEN_UNREACHABLE -ne 'true') { throw $detail }
+
+              $expiry = [DateTime]::ParseExact($env:SKIP_UNTIL_UTC, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+              if ([DateTime]::UtcNow.Date -gt $expiry) {
+                  throw @"
+          $detail
+
+          The temporary unreachable-bypass EXPIRED on $($expiry.ToString('yyyy-MM-dd')) and is no longer
+          suppressing this failure. Reason it was added: $env:SKIP_REASON
+
+          Either the connectivity issue is fixed (in which case remove skipWhenUnreachable,
+          skipUntilUtc and skipReason from this file), or it is not and the ticket needs chasing.
+          Push skipUntilUtc out only as a deliberate decision, not as a reflex.
+          "@
+              }
+
+              $daysLeft = ($expiry - [DateTime]::UtcNow.Date).Days
+              Write-Host "##vso[task.logissue type=warning]Mirror to on-prem SKIPPED - server unreachable from this agent. $env:SKIP_REASON. Bypass expires $env:SKIP_UNTIL_UTC ($daysLeft days left)."
+              Write-Host ''
+              Write-Host $detail
+              Write-Host ''
+              Write-Host "Nothing was pushed. The on-prem copy is now behind $(& git rev-parse --short HEAD)."
+              Write-Host "This job is reported as SucceededWithIssues, not Succeeded, so the gap stays visible."
+              Write-Host "##vso[task.complete result=SucceededWithIssues;]"
+              exit 0
+          }
+
+          # ================================================================
+          # 4. Reachability and write access
           #    ls-remote is the honest gate here: it proves DNS, TLS, routing
           #    and credentials in one call. There is no REST preflight because
           #    the _apis version varies by DevOps Server release.
+          #    Reached only when the TCP probe above succeeded, so a failure
+          #    here is auth or the repo - never connectivity - and is NOT
+          #    covered by the temporary bypass.
           # ================================================================
           Write-Section 'Remote state before push'
           & git @gitAuth ls-remote --heads --tags $target
@@ -155,9 +249,7 @@ jobs:
               throw @"
           git ls-remote failed (exit $LASTEXITCODE) against $target
 
-          Usual causes:
-            no route / timeout         -> this job is not on the Self-hosted pool, or the
-                                          agent box cannot reach sourcecontrol3.promiles.com
+          The TCP probe already succeeded, so this is NOT a routing problem. Usual causes:
             SSL certificate problem    -> the agent does not trust the server's CA; install it,
                                           or set sslNoVerify=true as a last resort
             401 / authentication       -> OnPremMirrorPat is missing, expired, or belongs to a
@@ -187,7 +279,7 @@ jobs:
           }
 
           # ================================================================
-          # 4. Push
+          # 5. Push
           # ================================================================
           Write-Section 'Push'
           $sourceRef = $env:SOURCE_BRANCH
@@ -233,6 +325,9 @@ jobs:
           ONPREM_REMOTE: $(onPremRemote)
           MIRROR_ALL: $(mirrorAllBranches)
           SSL_NO_VERIFY: $(sslNoVerify)
+          SKIP_WHEN_UNREACHABLE: $(skipWhenUnreachable) # TEMPORARY - see variables
+          SKIP_UNTIL_UTC: $(skipUntilUtc)
+          SKIP_REASON: $(skipReason)
           SOURCE_BRANCH: $(Build.SourceBranch)
           BUILD_REASON: $(Build.Reason)
 
@@ -252,8 +347,14 @@ jobs:
 # ============================================================================
 # Notes
 # ============================================================================
-# - This job only works on the Self-hosted pool. A Microsoft-hosted agent
-#   cannot route to sourcecontrol3.promiles.com and will time out.
+# - This job only works on the Self-hosted pool, AND only from an agent with a
+#   route into 10.102.30.0/24. Verified 2026-08-28: the current agent has
+#   neither. sourcecontrol3 answers on 443 from inside the network (HTTP 401,
+#   valid public cert), so the server is fine - the agent's position is not.
+# - Removing the temporary bypass: delete skipWhenUnreachable, skipUntilUtc and
+#   skipReason from the variables, delete section 3 of the script, and renumber
+#   sections 4 and 5. The ls-remote gate then catches connectivity again, just
+#   more slowly.
 # - On-prem PATs expire like cloud ones, and the default lifetime is often
 #   shorter. When pushes start failing with 401, regenerate and update
 #   OnPremMirrorPat. Set a calendar reminder.
