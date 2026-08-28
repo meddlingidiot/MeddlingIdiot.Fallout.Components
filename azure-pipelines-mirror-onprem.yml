@@ -1,0 +1,269 @@
+# ============================================================================
+# Mirror to on-prem Azure DevOps Server
+# ============================================================================
+#
+# Pushes commits from the Azure DevOps Services (cloud) master repo to the
+# on-prem DevOps Server copy. The cloud repo stays authoritative; on-prem is a
+# downstream copy.
+#
+# Sibling of azure-pipelines-mirror.yml (GitHub). Deliberately a SEPARATE
+# pipeline from both of them:
+#   - a failing test must not stop the mirror
+#   - an expired GitHub PAT must not stop this mirror, and vice versa
+#   - PR builds must never push
+#   - it needs no SDK, no feed auth, and no build
+#
+# NETWORK - sourcecontrol3.promiles.com is not reachable from a
+# Microsoft-hosted agent. This job MUST run on the self-hosted pool, on a box
+# inside the network. That is why 'Self-hosted' is not negotiable below.
+#
+# Setup (one time):
+#   1. Create the repo on the on-prem server EMPTY - no README, no .gitignore.
+#      (Azure DevOps Server offers to seed a README; decline it.)
+#   2. Create a PAT on the on-prem server:
+#        sourcecontrol3.promiles.com -> User settings -> Personal access tokens
+#        Scope: Code (Read & write)
+#      The PAT belongs to a user who must have Contribute on the target repo.
+#   3. Add it to the 'Secrets' variable group as OnPremMirrorPat, marked
+#      secret (the padlock).
+#   4. Create a pipeline in Azure DevOps pointing at this file.
+#
+# ALTERNATIVE TO A PAT - if the self-hosted agent's service account already has
+# Contribute on the on-prem repo, Windows integrated auth may work with no
+# token at all. Leave OnPremMirrorPat empty and this job falls back to the
+# agent's default credentials. It says which mode it used in the log.
+#
+# This pipeline never force-pushes. If on-prem has diverged, the push fails
+# loudly instead of destroying commits.
+# ============================================================================
+
+trigger:
+  branches:
+    include:
+      - '*'
+  tags:
+    include:
+      - 'v*'
+
+# Never mirror pull request builds - the merge commit is not a real branch.
+pr: none
+
+name: mirror-onprem-$(Date:yyyyMMdd)$(Rev:.r)
+
+variables:
+  - group: Secrets # Should contain OnPremMirrorPat (optional - see ALTERNATIVE above)
+
+  # Full target URL. Kept whole rather than composed from collection/project
+  # parts because the collection name contains a space ('ProMiles Fuel Tax')
+  # and re-encoding it by hand is a reliable way to break this.
+  - name: onPremRemote
+    value: 'https://sourcecontrol3.promiles.com/ProMiles%20Fuel%20Tax/FuelTaxAutomation/_git/Automation.Fallout.Components'
+
+  # 'true' mirrors every branch on origin. Unlike the GitHub mirror - which
+  # defaults to 'false' because feature branch names would be public - this
+  # target is internal, so a full copy is both safe and more useful for DR.
+  - name: mirrorAllBranches
+    value: 'true'
+
+  # LAST RESORT. Set to 'true' only if the on-prem server presents a cert the
+  # agent does not trust and you cannot install the internal CA on the agent.
+  # It disables TLS verification for this job's git calls and makes the push
+  # vulnerable to interception. Installing the CA on the agent is the fix.
+  - name: sslNoVerify
+    value: 'false'
+
+jobs:
+  - job: MirrorOnPremJob
+    displayName: 'Mirror to on-prem DevOps Server'
+    pool:
+      name: 'Self-hosted' # Required - the on-prem server is not publicly routable.
+
+    steps:
+      # ----------------------------------------------------------------
+      # Full history is required: a shallow clone cannot be pushed.
+      # persistCredentials lets us fetch the other branches from origin
+      # when mirrorAllBranches is true.
+      # ----------------------------------------------------------------
+      - checkout: self
+        displayName: 'Checkout Repository'
+        fetchDepth: 0
+        persistCredentials: true
+        clean: false
+
+      - powershell: |
+          $ErrorActionPreference = 'Stop'
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+          function Write-Section { param([string] $Name) Write-Host ''; Write-Host "===== $Name =====" }
+
+          $target = $env:ONPREM_REMOTE
+
+          # ================================================================
+          # 1. Context
+          # ================================================================
+          Write-Section 'Context'
+          Write-Host "Agent           : $env:COMPUTERNAME"
+          Write-Host "PowerShell      : $($PSVersionTable.PSVersion)"
+          Write-Host "git             : $(& git --version)"
+          Write-Host "Build reason    : $env:BUILD_REASON"
+          Write-Host "Source ref      : $env:SOURCE_BRANCH"
+          Write-Host "Target          : $target"
+          Write-Host "Mirror all      : $env:MIRROR_ALL"
+          Write-Host "HEAD            : $(& git rev-parse --short HEAD)  $(& git log -1 --format=%s)"
+
+          # ================================================================
+          # 2. Authentication mode
+          #    A per-command header keeps the token out of .git/config and out
+          #    of any process command line. It also overrides the Azure DevOps
+          #    Services header that 'persistCredentials: true' wrote, which is
+          #    scoped to dev.azure.com and would be rejected on-prem.
+          #    credential.helper is blanked so a credential manager on the
+          #    agent cannot substitute a different stored account.
+          # ================================================================
+          Write-Section 'Authentication'
+
+          $gitAuth = @('-c', 'credential.helper=')
+
+          if ([string]::IsNullOrWhiteSpace($env:ONPREM_PAT)) {
+              Write-Host "Mode            : agent default credentials (OnPremMirrorPat is empty)"
+              Write-Host "Running as      : $env:USERDOMAIN\$env:USERNAME"
+              Write-Host ''
+              Write-Host "If the push fails with a 401 or a credential prompt, this account does"
+              Write-Host "not have Contribute on the target repo. Add a PAT as OnPremMirrorPat."
+          }
+          else {
+              # Azure DevOps basic auth ignores the username; the PAT is the password.
+              $basic  = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($env:ONPREM_PAT)"))
+              $gitAuth += @('-c', "http.extraheader=AUTHORIZATION: basic $basic")
+              Write-Host "Mode            : personal access token (OnPremMirrorPat)"
+          }
+
+          if ($env:SSL_NO_VERIFY -eq 'true') {
+              $gitAuth += @('-c', 'http.sslVerify=false')
+              Write-Host "##[warning]TLS verification is DISABLED for this job (sslNoVerify=true). Install the internal CA on the agent and set this back to 'false'."
+          }
+
+          # ================================================================
+          # 3. Reachability and write access
+          #    ls-remote is the honest gate here: it proves DNS, TLS, routing
+          #    and credentials in one call. There is no REST preflight because
+          #    the _apis version varies by DevOps Server release.
+          # ================================================================
+          Write-Section 'Remote state before push'
+          & git @gitAuth ls-remote --heads --tags $target
+          if ($LASTEXITCODE -ne 0) {
+              throw @"
+          git ls-remote failed (exit $LASTEXITCODE) against $target
+
+          Usual causes:
+            no route / timeout         -> this job is not on the Self-hosted pool, or the
+                                          agent box cannot reach sourcecontrol3.promiles.com
+            SSL certificate problem    -> the agent does not trust the server's CA; install it,
+                                          or set sslNoVerify=true as a last resort
+            401 / authentication       -> OnPremMirrorPat is missing, expired, or belongs to a
+                                          user without Contribute on the repo
+            404 / repository not found -> the repo does not exist on the server yet; create it
+                                          EMPTY first (see Setup at the top of this file)
+          "@
+          }
+
+          function Push-ToOnPrem {
+              param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $PushArgs)
+
+              Write-Host "> git push $($PushArgs -join ' ')"
+              & git @gitAuth push @PushArgs
+              if ($LASTEXITCODE -ne 0) {
+                  throw @"
+          git push failed (exit $LASTEXITCODE). Read the 'remote:' lines above; the usual causes are:
+            'TF401027' / 'denied'             -> the PAT's user lacks Contribute on the target repo
+            'non-fast-forward' / 'fetch first'-> on-prem has commits the cloud repo does not;
+                                                 reconcile by hand (see Seeding at the bottom)
+            'VS403654' / branch policy        -> a branch policy on-prem is rejecting the push;
+                                                 leave mirrored branches unpoliced
+            'RPC failed' / 'HTTP 413'         -> push too large for the server's request limit;
+                                                 seed once from a local clone instead
+          "@
+              }
+          }
+
+          # ================================================================
+          # 4. Push
+          # ================================================================
+          Write-Section 'Push'
+          $sourceRef = $env:SOURCE_BRANCH
+
+          if ($sourceRef -like 'refs/tags/*') {
+              $tag = $sourceRef -replace '^refs/tags/', ''
+              Write-Host "Tag build: pushing tag $tag"
+              Push-ToOnPrem $target "refs/tags/$($tag)"
+          }
+          elseif ($env:MIRROR_ALL -eq 'true') {
+              Write-Host 'Mirroring all branches'
+              & git fetch origin --prune --tags "+refs/heads/*:refs/remotes/origin/*"
+              if ($LASTEXITCODE -ne 0) { throw "git fetch failed (exit $LASTEXITCODE)" }
+
+              # strip=3 turns refs/remotes/origin/feature/x into feature/x
+              $branches = & git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin |
+                          Where-Object { $_ -and $_ -ne 'HEAD' }
+
+              foreach ($branch in $branches) {
+                  Push-ToOnPrem $target "refs/remotes/origin/$($branch):refs/heads/$($branch)"
+              }
+              Push-ToOnPrem $target '--tags'
+          }
+          else {
+              # Branch build. Build.SourceBranchName is only the last segment
+              # ('nukemigration' for feature/nukemigration), so derive the real
+              # name from the full ref. The checkout is a detached HEAD, which is
+              # why this pushes HEAD rather than a local branch name.
+              $branch = $sourceRef -replace '^refs/heads/', ''
+              Write-Host "Branch build: pushing $branch"
+              Push-ToOnPrem $target "HEAD:refs/heads/$($branch)"
+              Push-ToOnPrem $target '--tags'
+          }
+
+          Write-Section 'Remote state after push'
+          & git @gitAuth ls-remote --heads --tags $target
+
+          Write-Host ''
+          Write-Host 'Mirror complete.'
+        displayName: 'Push to on-prem DevOps Server'
+        env:
+          ONPREM_PAT: $(OnPremMirrorPat) # Secret variables are not auto-exposed to scripts
+          ONPREM_REMOTE: $(onPremRemote)
+          MIRROR_ALL: $(mirrorAllBranches)
+          SSL_NO_VERIFY: $(sslNoVerify)
+          SOURCE_BRANCH: $(Build.SourceBranch)
+          BUILD_REASON: $(Build.Reason)
+
+# ============================================================================
+# Seeding an existing (non-empty) on-prem repo
+# ============================================================================
+# If on-prem already has commits the cloud repo does not, the first push is
+# rejected. Reconcile once from a local clone, then let this pipeline take over:
+#
+#   git remote add onprem https://sourcecontrol3.promiles.com/ProMiles%20Fuel%20Tax/FuelTaxAutomation/_git/Automation.Fallout.Components
+#   git push onprem main --force     # destroys the on-prem history
+#   git push onprem --tags
+#
+# Seeding from a local clone is also the workaround if the first automated push
+# is too large for the server's request size limit.
+#
+# ============================================================================
+# Notes
+# ============================================================================
+# - This job only works on the Self-hosted pool. A Microsoft-hosted agent
+#   cannot route to sourcecontrol3.promiles.com and will time out.
+# - On-prem PATs expire like cloud ones, and the default lifetime is often
+#   shorter. When pushes start failing with 401, regenerate and update
+#   OnPremMirrorPat. Set a calendar reminder.
+# - Branch policies on the on-prem side will reject these pushes. Leave the
+#   mirrored branches unpoliced, or allow the PAT's user to bypass.
+# - Branch DELETIONS do not propagate. A branch removed in the cloud stays on
+#   the on-prem copy until someone deletes it there. This is the deliberate
+#   cost of never running a destructive push; prune by hand if it matters.
+# - This mirrors code only. Work items, PRs, and pipeline history stay in
+#   Azure DevOps Services.
+# - A true 'git push --mirror' is deliberately not used: it deletes refs that
+#   exist only on-prem and force-updates everything else.
+# ============================================================================
