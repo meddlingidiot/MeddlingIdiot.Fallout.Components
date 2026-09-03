@@ -142,13 +142,25 @@ jobs:
           # ErrorActionPreference is relaxed for the call because a native
           # command writing to stderr under 'Stop' aborts before the exit code
           # can be inspected, and git writes ordinary progress there.
+          #
+          # $GitArgs is a plain positional array, NOT ValueFromRemainingArguments.
+          # Every caller passes one pre-built array, and on Windows PowerShell 5.1
+          # a single array bound through ValueFromRemainingArguments is coerced
+          # to ONE space-joined string - git then sees a single argument
+          # '-c credential.helper= -c http.extraheader=... ls-remote ...' and
+          # fails with 'unknown option' (exit 129). That was a real failure here.
+          #
+          # git echoes the offending argument back in that message, so anything
+          # it says is scrubbed of the Authorization header before it can reach
+          # the build log. Azure DevOps masks the raw PAT but not its base64 form.
           function Invoke-Git {
-              param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $GitArgs)
+              param([string[]] $GitArgs)
 
               $previous = $ErrorActionPreference
               $ErrorActionPreference = 'Continue'
               try {
-                  $output = & git @GitArgs 2>&1 | ForEach-Object { "$_" }
+                  $output = & git @GitArgs 2>&1 |
+                      ForEach-Object { "$_" -replace '(AUTHORIZATION:\s*basic\s+)\S+', '$1***' }
                   return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = @($output) }
               }
               finally { $ErrorActionPreference = $previous }
@@ -216,9 +228,19 @@ jobs:
           "@
               }
 
+              if ($text -match 'unknown option') {
+                  return @"
+          DIAGNOSIS: a bug in THIS script, not the server or the PAT.
+
+          git was handed its arguments as one space-joined string instead of separate
+          tokens. Check Invoke-Git: its parameter must stay a plain [string[]] and callers
+          must pass an array. ValueFromRemainingArguments re-introduces this on PS 5.1.
+          "@
+              }
+
               return @"
           DIAGNOSIS: not recognised. Read git's output above - it is the authority, and this
-          script only knows the four failures seen so far.
+          script only knows the five failures seen so far.
           "@
           }
 

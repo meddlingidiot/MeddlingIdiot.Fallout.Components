@@ -115,7 +115,12 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
                           $"--sas \"{AzureBlobSasTokenLocal}\" " +
                           $"--channel {channel} " +
                           $"--outputDir \"{downloadDir}\"";
-
+            
+            if (releaseType == "Prerelease")
+            {
+                vpkArgs += $" --delta none";
+            }
+            
             if (!string.IsNullOrEmpty(AzureBlobEndpoint))
             {
                 vpkArgs += $" --endpoint {AzureBlobEndpoint}";
