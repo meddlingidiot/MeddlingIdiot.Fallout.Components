@@ -152,24 +152,39 @@ jobs:
           #    of any process command line. It also overrides the Azure DevOps
           #    Services header that 'persistCredentials: true' wrote, which is
           #    scoped to dev.azure.com and would be rejected on-prem.
-          #    credential.helper is blanked so a credential manager on the
-          #    agent cannot substitute a different stored account.
+          #
+          #    The two modes need OPPOSITE handling of credential.helper, and
+          #    conflating them was a real bug here: blanking it unconditionally
+          #    stopped a stored account from being substituted (right for the PAT
+          #    mode) but also removed the only mechanism that could supply the
+          #    agent's own credentials (fatal for the no-PAT mode), so that
+          #    fallback could never work - it failed with
+          #      could not read Username for '<server>': terminal prompts disabled
+          #    which looks like a server problem and is not one.
           # ================================================================
           Write-Section 'Authentication'
 
-          $gitAuth = @('-c', 'credential.helper=')
+          $gitAuth = @()
 
           if ([string]::IsNullOrWhiteSpace($env:ONPREM_PAT)) {
+              # Integrated auth. The helper is left in place deliberately, and emptyAuth lets
+              # git answer a Negotiate/NTLM challenge without demanding a username first -
+              # without it, git prompts, and prompts are disabled on an agent.
+              $gitAuth += @('-c', 'http.emptyAuth=true')
+
               Write-Host "Mode            : agent default credentials (OnPremMirrorPat is empty)"
               Write-Host "Running as      : $env:USERDOMAIN\$env:USERNAME"
               Write-Host ''
-              Write-Host "If the push fails with a 401 or a credential prompt, this account does"
-              Write-Host "not have Contribute on the target repo. Add a PAT as OnPremMirrorPat."
+              Write-Host "This only works if the agent's service account has Contribute on the"
+              Write-Host "target repo AND the server offers Windows integrated auth. If it does"
+              Write-Host "not, add a PAT as OnPremMirrorPat - that is the supported path."
           }
           else {
               # Azure DevOps basic auth ignores the username; the PAT is the password.
+              # credential.helper is blanked here so a credential manager on the agent cannot
+              # substitute a different stored account for the token we were given.
               $basic  = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($env:ONPREM_PAT)"))
-              $gitAuth += @('-c', "http.extraheader=AUTHORIZATION: basic $basic")
+              $gitAuth += @('-c', 'credential.helper=', '-c', "http.extraheader=AUTHORIZATION: basic $basic")
               Write-Host "Mode            : personal access token (OnPremMirrorPat)"
           }
 
@@ -249,13 +264,28 @@ jobs:
               throw @"
           git ls-remote failed (exit $LASTEXITCODE) against $target
 
-          The TCP probe already succeeded, so this is NOT a routing problem. Usual causes:
-            SSL certificate problem    -> the agent does not trust the server's CA; install it,
-                                          or set sslNoVerify=true as a last resort
-            401 / authentication       -> OnPremMirrorPat is missing, expired, or belongs to a
-                                          user without Contribute on the repo
-            404 / repository not found -> the repo does not exist on the server yet; create it
-                                          EMPTY first (see Setup at the top of this file)
+          The TCP probe already succeeded, so this is NOT a routing problem. Match the FIRST
+          line of git's own output above - these causes look alike in a build log and are not:
+
+            'could not read Username'  -> NO credentials were offered at all. git reached the
+                                          server and had nothing to send. This is NOT a TLS
+                                          problem and sslNoVerify will not change it. Either
+                                          OnPremMirrorPat is empty or unmapped (check the
+                                          'Mode' line in the Authentication section above), or
+                                          integrated auth is not on offer from the server.
+                                          Fix: add the PAT to the 'Secrets' variable group.
+
+            'SSL certificate problem'  -> and only this wording is TLS. The agent does not
+                                          trust the server's CA; install it on the agent, or
+                                          set sslNoVerify=true as a last resort.
+
+            'Authentication failed' / 401
+                                       -> credentials WERE sent and rejected. The PAT is
+                                          expired, or its user lacks Contribute on the repo.
+
+            'repository not found' / 404
+                                       -> the repo does not exist on the server yet; create it
+                                          EMPTY first (see Setup at the top of this file).
           "@
           }
 
