@@ -76,6 +76,19 @@ stages:
             inputs:
               useGlobalJson: true
 
+          # UseDotNet@2 redirects DOTNET_ROOT and PATH to the hosted tool cache, which
+          # then holds only what the task itself installed - the .NET 8 runtime that
+          # ships preinstalled on windows-latest lives elsewhere and is no longer found.
+          # Automation.Fallout.Builder and its unit tests target net8.0, so without this
+          # the test run fails with "You must install or update .NET to run this
+          # application". A self-hosted agent masks this because the runtime is
+          # installed machine-wide there.
+          - task: UseDotNet@2
+            displayName: 'Install the .NET 8 runtime for net8.0 test projects'
+            inputs:
+              packageType: runtime
+              version: '8.x'
+
           # ----------------------------------------------------------------
           # Setup: Authenticate to Azure Artifacts Feeds
           # ----------------------------------------------------------------
