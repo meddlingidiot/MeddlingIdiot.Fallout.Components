@@ -54,7 +54,7 @@ stages:
       - job: BuildJob
         displayName: 'Fallout Build'
         pool:
-          name: 'Self-hosted'
+          vmImage: 'windows-latest'
 
         steps:
           # ----------------------------------------------------------------
