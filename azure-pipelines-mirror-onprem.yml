@@ -131,6 +131,97 @@ jobs:
 
           function Write-Section { param([string] $Name) Write-Host ''; Write-Host "===== $Name =====" }
 
+          # ------------------------------------------------------------------
+          # Running git so its own words survive into the failure message.
+          # ------------------------------------------------------------------
+          # An earlier version printed git's output and then threw a static list
+          # of four possible causes, which put the evidence and the diagnosis in
+          # different parts of a long build log - and anyone reading only the
+          # failure saw four candidates and no way to choose between them.
+          #
+          # ErrorActionPreference is relaxed for the call because a native
+          # command writing to stderr under 'Stop' aborts before the exit code
+          # can be inspected, and git writes ordinary progress there.
+          function Invoke-Git {
+              param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $GitArgs)
+
+              $previous = $ErrorActionPreference
+              $ErrorActionPreference = 'Continue'
+              try {
+                  $output = & git @GitArgs 2>&1 | ForEach-Object { "$_" }
+                  return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = @($output) }
+              }
+              finally { $ErrorActionPreference = $previous }
+          }
+
+          # git puts the useful line last as often as first ('fatal:' follows the
+          # progress chatter), so prefer the diagnostic lines over line one.
+          function Get-FirstMeaningfulLine {
+              param([string[]] $Output)
+
+              if (-not $Output) { return '(no output)' }
+
+              $interesting = $Output | Where-Object { $_ -match 'fatal:|error:|remote:|warning:' } | Select-Object -First 1
+              if ($interesting) { return $interesting.Trim() }
+
+              return ($Output | Where-Object { $_.Trim() } | Select-Object -First 1).Trim()
+          }
+
+          # One cause, chosen from what git actually said - not a menu.
+          function Get-Diagnosis {
+              param([string[]] $Output)
+
+              $text = ($Output | Out-String)
+
+              if ($text -match 'could not read Username|terminal prompts disabled|could not read Password') {
+                  return @"
+          DIAGNOSIS: no credentials were offered at all.
+
+          git reached the server and had nothing to send, so it tried to prompt. This is NOT a
+          TLS problem - sslNoVerify will not change it - and it is not a rejection either.
+
+          Fix: put the PAT in the 'Secrets' variable group as OnPremMirrorPat and confirm the
+          job's env: block maps it. If the Auth mode above says 'agent default credentials',
+          the variable did not arrive; if it says 'personal access token', the header was sent
+          and this message means the server refused Basic and asked for something else.
+          "@
+              }
+
+              if ($text -match 'SSL certificate problem|unable to get local issuer|self.signed certificate|SEC_E_UNTRUSTED') {
+                  return @"
+          DIAGNOSIS: the agent does not trust the server's certificate chain.
+
+          This is the one failure sslNoVerify addresses. The right fix is to install the
+          issuing CA on the agent; setting sslNoVerify=true is the documented last resort.
+          "@
+              }
+
+              if ($text -match 'Authentication failed|HTTP 401|TF400813|VS30063|was not authorized') {
+                  return @"
+          DIAGNOSIS: credentials were sent and rejected.
+
+          The PAT has expired, was created on the wrong server, or belongs to a user without
+          Contribute on the target repo. Reissue it on sourcecontrol3 with scope Code
+          (Read & write) and update OnPremMirrorPat.
+          "@
+              }
+
+              if ($text -match 'not found|does not exist|HTTP 404|TF200016|TF401019') {
+                  return @"
+          DIAGNOSIS: the repository does not exist at that path.
+
+          Create it on the server EMPTY - no README, no .gitignore - then re-run. Check the
+          collection and project segments of the URL too; the collection name contains a space
+          and must stay percent-encoded.
+          "@
+              }
+
+              return @"
+          DIAGNOSIS: not recognised. Read git's output above - it is the authority, and this
+          script only knows the four failures seen so far.
+          "@
+          }
+
           $target = $env:ONPREM_REMOTE
 
           # ================================================================
@@ -171,6 +262,7 @@ jobs:
               # git answer a Negotiate/NTLM challenge without demanding a username first -
               # without it, git prompts, and prompts are disabled on an agent.
               $gitAuth += @('-c', 'http.emptyAuth=true')
+              $authMode = 'agent default credentials (OnPremMirrorPat is empty or unmapped)'
 
               Write-Host "Mode            : agent default credentials (OnPremMirrorPat is empty)"
               Write-Host "Running as      : $env:USERDOMAIN\$env:USERNAME"
@@ -185,6 +277,7 @@ jobs:
               # substitute a different stored account for the token we were given.
               $basic  = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($env:ONPREM_PAT)"))
               $gitAuth += @('-c', 'credential.helper=', '-c', "http.extraheader=AUTHORIZATION: basic $basic")
+              $authMode = "personal access token (OnPremMirrorPat, $($env:ONPREM_PAT.Length) chars)"
               Write-Host "Mode            : personal access token (OnPremMirrorPat)"
           }
 
@@ -259,33 +352,18 @@ jobs:
           #    covered by the temporary bypass.
           # ================================================================
           Write-Section 'Remote state before push'
-          & git @gitAuth ls-remote --heads --tags $target
-          if ($LASTEXITCODE -ne 0) {
+
+          $ls = Invoke-Git (@($gitAuth) + @('ls-remote', '--heads', '--tags', $target))
+          $ls.Output | ForEach-Object { Write-Host $_ }
+
+          if ($ls.ExitCode -ne 0) {
               throw @"
-          git ls-remote failed (exit $LASTEXITCODE) against $target
+          git ls-remote failed (exit $($ls.ExitCode)) against $target
 
-          The TCP probe already succeeded, so this is NOT a routing problem. Match the FIRST
-          line of git's own output above - these causes look alike in a build log and are not:
+          Auth mode  : $authMode
+          git said   : $(Get-FirstMeaningfulLine $ls.Output)
 
-            'could not read Username'  -> NO credentials were offered at all. git reached the
-                                          server and had nothing to send. This is NOT a TLS
-                                          problem and sslNoVerify will not change it. Either
-                                          OnPremMirrorPat is empty or unmapped (check the
-                                          'Mode' line in the Authentication section above), or
-                                          integrated auth is not on offer from the server.
-                                          Fix: add the PAT to the 'Secrets' variable group.
-
-            'SSL certificate problem'  -> and only this wording is TLS. The agent does not
-                                          trust the server's CA; install it on the agent, or
-                                          set sslNoVerify=true as a last resort.
-
-            'Authentication failed' / 401
-                                       -> credentials WERE sent and rejected. The PAT is
-                                          expired, or its user lacks Contribute on the repo.
-
-            'repository not found' / 404
-                                       -> the repo does not exist on the server yet; create it
-                                          EMPTY first (see Setup at the top of this file).
+          $(Get-Diagnosis $ls.Output)
           "@
           }
 
@@ -293,17 +371,34 @@ jobs:
               param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $PushArgs)
 
               Write-Host "> git push $($PushArgs -join ' ')"
-              & git @gitAuth push @PushArgs
-              if ($LASTEXITCODE -ne 0) {
+
+              $push = Invoke-Git (@($gitAuth) + @('push') + $PushArgs)
+              $push.Output | ForEach-Object { Write-Host $_ }
+
+              if ($push.ExitCode -ne 0) {
+                  $text = ($push.Output | Out-String)
+
+                  # Push-only failures first; anything else falls through to the shared
+                  # connectivity/auth diagnosis, which is the same set of causes.
+                  $detail = if ($text -match 'non-fast-forward|fetch first|rejected') {
+                      "DIAGNOSIS: on-prem has commits the cloud repo does not. Reconcile by hand - see Seeding at the bottom of this file. Nothing was overwritten."
+                  } elseif ($text -match 'VS403654|policy|protected') {
+                      "DIAGNOSIS: a branch policy on the on-prem side is rejecting the push. Leave mirrored branches unpoliced, or let this PAT's user bypass."
+                  } elseif ($text -match 'RPC failed|HTTP 413|pack exceeds|early EOF') {
+                      "DIAGNOSIS: the push is larger than the server's request limit. Seed once from a local clone - see Seeding at the bottom of this file."
+                  } elseif ($text -match 'TF401027|denied|does not have permission') {
+                      "DIAGNOSIS: this account can read the repo but not write to it. It needs Contribute on the target repo."
+                  } else {
+                      Get-Diagnosis $push.Output
+                  }
+
                   throw @"
-          git push failed (exit $LASTEXITCODE). Read the 'remote:' lines above; the usual causes are:
-            'TF401027' / 'denied'             -> the PAT's user lacks Contribute on the target repo
-            'non-fast-forward' / 'fetch first'-> on-prem has commits the cloud repo does not;
-                                                 reconcile by hand (see Seeding at the bottom)
-            'VS403654' / branch policy        -> a branch policy on-prem is rejecting the push;
-                                                 leave mirrored branches unpoliced
-            'RPC failed' / 'HTTP 413'         -> push too large for the server's request limit;
-                                                 seed once from a local clone instead
+          git push failed (exit $($push.ExitCode)).
+
+          Auth mode  : $authMode
+          git said   : $(Get-FirstMeaningfulLine $push.Output)
+
+          $detail
           "@
               }
           }
