@@ -28,6 +28,16 @@ branches:
     source-branches: ['main']
     is-main-branch: false
     pre-release-weight: 30000
+  pull-request:
+    mode: ContinuousDelivery
+    label: ''
+    increment: Inherit
+    regex: ^(pull|pull\-requests|pr)[/-]
+    source-branches: ['main', 'feature', 'bugfix']
+    is-main-branch: false
+    track-merge-target: false
+    label-number-pattern: '[/-](?<number>\d+)'
+    pre-release-weight: 30000
 
 ignore:
   sha: []
