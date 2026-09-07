@@ -29,7 +29,7 @@ branches:
     is-main-branch: false
     pre-release-weight: 30000
   pull-request:
-    mode: ContinuousDelivery
+    mode: ContinuousDeployment
     label: ''
     increment: Inherit
     regex: ^(pull|pull\-requests|pr)[/-]
