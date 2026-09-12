@@ -40,8 +40,8 @@ jobs:
     runs-on: windows-latest
 
     permissions:
-      contents: write
-      packages: write
+      contents: write      # TagRelease pushes the v{version} tag
+      id-token: write      # Trusted Publishing: lets the job request an OIDC token
       pull-requests: read
 
     steps:
@@ -65,22 +65,38 @@ jobs:
           global-json-file: global.json
 
       # ----------------------------------------------------------------
-      # Setup: Authenticate to GitHub Packages
-      #           dotnet nuget add source --username ${{ github.actor }} --password ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || echo "Package source already exists or failed to add, continuing..."
+      # Setup: Trusted Publishing — a short-lived nuget.org key, not a stored one
+      #
+      # GitHub signs an OIDC token describing this repository and workflow; nuget.org
+      # checks it against the trusted publishing policy and hands back an API key that
+      # lives for one hour. Nothing long-lived is stored in this repository's secrets.
+      #
+      # Kept immediately before the build for that reason: the key is issued now and the
+      # push happens at the end of it, so the whole compile-test-package run has to fit
+      # inside the hour.
+      #
+      # main only. A branch build publishes nothing (see NuGetPublishDecision), and asking
+      # for a publishing credential it will not use would be its own small mistake.
       # ----------------------------------------------------------------
-      - name: Authenticate to GitHub Packages
-        run: |
-          dotnet nuget remove source github
-          dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.actor }}  --password ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text  
-        shell: pwsh
+      - name: NuGet login (OIDC to short-lived key)
+        id: nuget-login
+        if: github.ref == 'refs/heads/main'
+        uses: NuGet/login@v1
+        with:
+          # The nuget.org profile name, not an email address. Not a secret - it is on the
+          # page of every package published under it.
+          user: themeddlingidiot
 
       # ----------------------------------------------------------------
       # Build: Run Fallout Build (uses default target from Build.cs)
-      # Default target is ReleasePackage, which performs:
+      # Default target is PublishNuGet, which performs:
       #   1. ShowVersion → Clean → Restore → Compile
       #   2. ScanSecrets → UnitTests → IntegrationTests → CoverageReport
-      #   3. UpdateChangelog → Package → ReleasePackage (push to feed)
+      #   3. UpdateChangelog → Package → PublishNuGet (push to nuget.org)
       #   4. TagRelease (if main branch)
+      #
+      # A prerelease version, or any branch but main, publishes nothing — the rules live in
+      # NuGetPublishDecision and they are tested.
       # ----------------------------------------------------------------
       # The SAS token is mapped through env: rather than passed on the command line, where it
       # would show up in process listings on the runner. Fallout resolves it from any of
@@ -89,11 +105,19 @@ jobs:
       - name: Execute Fallout Build
         run: |
           dotnet tool restore
-          dotnet run --project .\build\_build.csproj -- --artifacts-directory-param "${{ github.workspace }}\artifacts" --github-owner "${{ github.repository_owner }}"
+          dotnet run --project .\build\_build.csproj -- --artifacts-directory-param "${{ github.workspace }}\artifacts"
         shell: pwsh
         env:
+          # Kept from upstream: unset expands to empty and the Velopack targets skip the
+          # upload, which is what happens here - this repository ships packages, not apps.
           AZURE_BLOB_SAS_TOKEN_LOCAL: ${{ secrets.AZURE_BLOB_SAS_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          # The short-lived key from the login step above, read by IHasNuGetOrg. Empty on a
+          # branch build, which is fine: PushPackagesToNuGet decides whether to publish
+          # before it ever reads a credential.
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          # The built-in token, needed only so TagRelease can git push the v{version} tag.
+          # Was GH_PACKAGES_TOKEN, which existed for a GitHub Packages push that is now gone.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------------------------------------------
       # Publish: NuGet Packages

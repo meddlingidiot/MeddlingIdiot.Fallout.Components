@@ -4,9 +4,44 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TargetFramework>net10.0</TargetFramework>
+
+        <IsPackable>true</IsPackable>
+        <PackageId>MeddlingIdiot.Fallout.Components</PackageId>
+        <Description>Reusable Fallout build components: compile, test, package, publish, Velopack release and the targets that chain them.</Description>
+        <PackageTags>fallout;build;ci;nuke;automation;velopack</PackageTags>
+
+        <!-- ── Packaging ────────────────────────────────────────────────────
+             Published to nuget.org under the MeddlingIdiot name. The id is
+             deliberately *not* the old Automation.Fallout.* one: the work repository this
+             was forked from still publishes those ids to its own feed, and one id served by
+             two feeds from two diverged codebases resolves to whichever version number is
+             higher — silently, and differently on different machines.
+
+             The assembly and namespaces keep their old names on purpose, so every consuming
+             Build.cs keeps compiling after nothing more than a PackageReference change.
+        -->
+        <Authors>MeddlingIdiot</Authors>
+        <Company>MeddlingIdiot</Company>
+        <Copyright>Copyright © MeddlingIdiot</Copyright>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/meddlingidiot/MeddlingIdiot.Fallout.Components</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/meddlingidiot/MeddlingIdiot.Fallout.Components</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- Kept at upstream's 10.4.0 rather than reverted to 11.0.18: the downgrade came with
+           the NuGet.Packaging 7.9.0 pin in build/_build.csproj, and both are on nuget.org. -->
       <PackageReference Include="Fallout.Build" Version="10.4.0" />
       <PackageReference Include="Fallout.Common" Version="10.4.0" />
       <PackageReference Include="SharpZipLib" Version="1.4.2" />

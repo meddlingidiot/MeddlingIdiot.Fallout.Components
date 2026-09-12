@@ -1,5 +1,19 @@
 # Automation.Fallout.Components
 
+> **Renamed, and no longer a mirror.** This repository is now master for the MeddlingIdiot
+> line of these packages, published to nuget.org:
+>
+> | Was (private feeds) | Now (nuget.org) |
+> |---|---|
+> | `Automation.Fallout.Components` | `MeddlingIdiot.Fallout.Components` |
+> | `Automation.Fallout.Builder` | `MeddlingIdiot.Fallout.Builder` |
+>
+> The ids changed because the repository this was forked from still publishes the old ones to
+> its own feed, and a single id served by two feeds from two diverged codebases resolves to
+> whichever version number happens to be higher. Assembly names, namespaces and the
+> `autofallout` command are unchanged, so consuming repositories need a new
+> `PackageReference` id and nothing else.
+
 A **convention-based build system for .NET, delivered as a NuGet package.** Build logic lives in
 versioned components that repositories *compose*, not in scripts that repositories *copy*. A
 consuming repo holds a ten-line `Build.cs` declaring which components apply; everything those
