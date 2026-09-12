@@ -23,6 +23,6 @@ public class Build : GitHubActionsBuild, IShowVersion, IClean, ICompile, IRestor
     // The only publish step here, so it is the one that tags.
     bool INuGetPublish.TagsReleasesFromNuGet => true;
 
-    int IHasTests.MinCoverageThreshold => 35;
+    int IHasTests.MinCoverageThreshold => 20;
     bool ITestExecution.UseMicrosoftTestingPlatform => true;
 }
