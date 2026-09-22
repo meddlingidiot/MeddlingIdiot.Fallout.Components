@@ -639,7 +639,13 @@ This package is consumed by 80+ repositories, so a change here is a change every
 
 ## 📄 License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE) — **except the MeddlingIdiot logo**
+(`Automation.Fallout.Components/Branding/meddlingidiot-splash.png`), which is all rights reserved
+and not sharable. See [TRADEMARKS.md](TRADEMARKS.md).
+
+The logo is the default Velopack splash screen only for installers published to
+`meddlingidiotinstallers`. Anyone else gets Velopack's own splash. To use your own image, set
+`VelopackSplashImagePath` (relative to the repo root); set it to `none` to force Velopack's.
 
 ## 👤 Authors
 

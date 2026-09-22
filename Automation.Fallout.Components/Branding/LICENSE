@@ -1,0 +1,12 @@
+The image files in this folder are NOT covered by the Apache License, Version 2.0 that
+applies to the rest of this repository and package.
+
+meddlingidiot-splash.png is the MeddlingIdiot logo.
+
+Copyright (c) MeddlingIdiot. All rights reserved.
+
+It is not licensed for use, copying, modification or redistribution by anyone else. It ships
+inside the MeddlingIdiot.Fallout.Components package only so that MeddlingIdiot's own
+installers can show it, and the build only applies it to installers published to
+MeddlingIdiot's own storage account. If you use this package for your own applications, set
+VelopackSplashImagePath to your own image, or leave it unset to keep Velopack's default.

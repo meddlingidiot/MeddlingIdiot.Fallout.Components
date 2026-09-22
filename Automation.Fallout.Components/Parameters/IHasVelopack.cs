@@ -9,6 +9,11 @@ public interface IHasVelopack: IFalloutBuild
                                             "";
     [Parameter] string VelopackIconPath => TryGetValue(() => VelopackIconPath) ??
                                            "";
+    // Image Setup.exe shows while installing (png/jpg/gif; relative to the repo root). Unset
+    // means the MeddlingIdiot logo for builds publishing to meddlingidiotinstallers, Velopack's
+    // own splash otherwise; "none" forces Velopack's. See VelopackSplash.
+    [Parameter] string VelopackSplashImagePath => TryGetValue(() => VelopackSplashImagePath) ??
+                                                  "";
     [Parameter] string VelopackChannel => TryGetValue(() => VelopackChannel) ?? 
                                           "win";
     [Parameter] string VelopackBlobContainer => TryGetValue(() => VelopackBlobContainer) ?? 

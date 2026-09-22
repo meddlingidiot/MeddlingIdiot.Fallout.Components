@@ -23,7 +23,9 @@
         <Authors>MeddlingIdiot</Authors>
         <Company>MeddlingIdiot</Company>
         <Copyright>Copyright © MeddlingIdiot</Copyright>
-        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <!-- A file, not the Apache-2.0 expression: the package embeds the MeddlingIdiot logo,
+             which is all rights reserved, and an SPDX expression cannot say "except that". -->
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageProjectUrl>https://github.com/meddlingidiot/MeddlingIdiot.Fallout.Components</PackageProjectUrl>
         <RepositoryUrl>https://github.com/meddlingidiot/MeddlingIdiot.Fallout.Components</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -37,6 +39,15 @@
 
     <ItemGroup>
         <None Include="..\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The MeddlingIdiot splash, embedded so it travels inside the dll the build runs from.
+             All rights reserved, not Apache: see Branding/LICENSE and VelopackSplash. -->
+        <EmbeddedResource Include="Branding\meddlingidiot-splash.png"
+                          LogicalName="Automation.Fallout.Components.Branding.meddlingidiot-splash.png" />
+        <None Include="Branding\LICENSE" Pack="true" PackagePath="Branding\" />
     </ItemGroup>
 
     <ItemGroup>

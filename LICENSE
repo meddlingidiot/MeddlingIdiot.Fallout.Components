@@ -200,3 +200,17 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+   ----------------------------------------------------------------------
+
+   EXCLUSION: MEDDLINGIDIOT LOGO
+
+   The Apache License above covers the source code only. It does NOT
+   cover the MeddlingIdiot logo, which is included in this repository
+   and package as:
+
+       Automation.Fallout.Components/Branding/meddlingidiot-splash.png
+
+   That image is Copyright (c) MeddlingIdiot, all rights reserved, and
+   is not licensed for use, copying, modification or redistribution.
+   See Automation.Fallout.Components/Branding/LICENSE and TRADEMARKS.md.

@@ -216,6 +216,30 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
                 Serilog.Log.Information("Using icon: {VelopackIconPath}", VelopackIconPath);
             }
 
+            var splash = VelopackSplash.Choose(VelopackSplashImagePath, AzureBlobAccount, RootDirectory);
+            string? splashPath = splash.Source switch
+            {
+                VelopackSplashSource.Configured => splash.Path,
+                VelopackSplashSource.MeddlingIdiotDefault => (string)(RootDirectory / ".tmp" / "velopack-splash.png"),
+                _ => null,
+            };
+            if (splash.Source == VelopackSplashSource.MeddlingIdiotDefault)
+            {
+                VelopackSplash.WriteMeddlingIdiotSplash(splashPath!);
+            }
+            if (splash.ConfiguredPathMissing)
+            {
+                Serilog.Log.Warning("{Reason}", splash.Reason);
+            }
+            else
+            {
+                Serilog.Log.Information("{Reason}", splash.Reason);
+            }
+            if (splashPath is not null)
+            {
+                vpkArgs += $" --splashImage \"{splashPath}\"";
+            }
+
             var vpkToolPath = ResolveVelopackCli();
 
             Serilog.Log.Information("Creating Velopack package...");
