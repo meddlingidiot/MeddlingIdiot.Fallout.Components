@@ -3,7 +3,6 @@ using Fallout.Common;
 using Fallout.Common.IO;
 using Fallout.Common.Tooling;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Automation.Fallout.Components.Components;
 
@@ -87,15 +86,7 @@ public interface IUpdateChangelog : IFalloutBuild, IHasGitVersion, IHasArtifacts
 
     private void GenerateChangelogSection(StringBuilder changelog, string tag, string previousTag, string versionLabel, bool isReleased, string releaseDate = "")
     {
-        // Header
-        if (isReleased)
-        {
-            changelog.AppendLine($"## [{versionLabel}] - {releaseDate}");
-        }
-        else
-        {
-            changelog.AppendLine($"## [Unreleased] - {versionLabel}");
-        }
+        changelog.AppendLine(ChangelogFormatter.Header(versionLabel, isReleased, releaseDate));
         changelog.AppendLine();
 
         // Get commits between tags
@@ -114,125 +105,6 @@ public interface IUpdateChangelog : IFalloutBuild, IHasGitVersion, IHasArtifacts
         var logProcess = ProcessTasks.StartProcess("git", gitLogArgs, workingDirectory: RootDirectory);
         logProcess.WaitForExit();
 
-        var commits = logProcess.Output
-            .Select(x => x.Text.Trim())
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToList();
-
-        if (!commits.Any())
-        {
-            changelog.AppendLine("No changes recorded.");
-            changelog.AppendLine();
-            return;
-        }
-
-        // Categorize commits
-        var features = new List<string>();
-        var fixes = new List<string>();
-        var breaking = new List<string>();
-        var chores = new List<string>();
-        var refactors = new List<string>();
-        var other = new List<string>();
-
-        foreach (var commit in commits)
-        {
-            var parts = commit.Split('|');
-            if (parts.Length < 2) continue;
-
-            var message = parts[0].Trim();
-            var hash = parts[1].Trim();
-            var author = parts.Length > 2 ? parts[2].Trim() : "Unknown";
-
-            var formattedCommit = $"- {message} ([{hash}](../../commit/{hash}))";
-
-            // Check for breaking change indicator (! after type)
-            // Examples: feat!:, fix!:, feat(scope)!:, fix(api)!:
-            var isBreaking = message.Contains("BREAKING", StringComparison.OrdinalIgnoreCase) ||
-                           System.Text.RegularExpressions.Regex.IsMatch(message, @"^(feat|fix|refactor|chore)(\([^)]*\))?!:", RegexOptions.IgnoreCase);
-
-            if (isBreaking)
-            {
-                breaking.Add(formattedCommit);
-            }
-            // Match: feat:, feat(scope):, feature:, feature(scope):
-            else if (System.Text.RegularExpressions.Regex.IsMatch(message, @"^feat(ure)?(\([^)]*\))?:", RegexOptions.IgnoreCase))
-            {
-                features.Add(formattedCommit);
-            }
-            // Match: fix:, fix(scope):, bugfix:, bugfix(scope):
-            else if (System.Text.RegularExpressions.Regex.IsMatch(message, @"^(fix|bugfix)(\([^)]*\))?:", RegexOptions.IgnoreCase))
-            {
-                fixes.Add(formattedCommit);
-            }
-            // Match: chore:, chore(scope):
-            else if (System.Text.RegularExpressions.Regex.IsMatch(message, @"^chore(\([^)]*\))?:", RegexOptions.IgnoreCase))
-            {
-                chores.Add(formattedCommit);
-            }
-            // Match: refactor:, refactor(scope):
-            else if (System.Text.RegularExpressions.Regex.IsMatch(message, @"^refactor(\([^)]*\))?:", RegexOptions.IgnoreCase))
-            {
-                refactors.Add(formattedCommit);
-            }
-            else
-            {
-                other.Add(formattedCommit);
-            }
-        }
-
-        // Output sections
-        if (breaking.Any())
-        {
-            changelog.AppendLine("### ⚠ BREAKING CHANGES");
-            changelog.AppendLine();
-            foreach (var item in breaking)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
-
-        if (features.Any())
-        {
-            changelog.AppendLine("### ✨ Features");
-            changelog.AppendLine();
-            foreach (var item in features)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
-
-        if (fixes.Any())
-        {
-            changelog.AppendLine("### 🐛 Bug Fixes");
-            changelog.AppendLine();
-            foreach (var item in fixes)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
-
-        if (refactors.Any())
-        {
-            changelog.AppendLine("### ♻️ Refactoring");
-            changelog.AppendLine();
-            foreach (var item in refactors)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
-
-        if (chores.Any())
-        {
-            changelog.AppendLine("### 🔧 Chores");
-            changelog.AppendLine();
-            foreach (var item in chores)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
-
-        if (other.Any())
-        {
-            changelog.AppendLine("### 📝 Other Changes");
-            changelog.AppendLine();
-            foreach (var item in other)
-                changelog.AppendLine(item);
-            changelog.AppendLine();
-        }
+        ChangelogFormatter.AppendCommits(changelog, logProcess.Output.Select(x => x.Text));
     }
 }

@@ -2,7 +2,80 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 1.0.13-beta.2
+## [1.0.24] - 2026-09-11
+
+### 📝 Other Changes
+
+- Fix coverage ([e9295b5](../../commit/e9295b5))
+- Publish to nuget.org under the MeddlingIdiot name ([a55eb77](../../commit/a55eb77))
+
+## [1.0.23] - 2026-09-07
+
+### 🐛 Bug Fixes
+
+- fix(gitversion): align pull request branch mode with mainline ([43b6fe5](../../commit/43b6fe5))
+
+## [1.0.22] - 2026-09-07
+
+### 🐛 Bug Fixes
+
+- fix(gitversion): add pull request branch configuration ([5658dbf](../../commit/5658dbf))
+
+## [1.0.21] - 2026-09-03
+
+### 🐛 Bug Fixes
+
+- fix(ci): install .NET 8 runtime for net8.0 test projects ([a57c431](../../commit/a57c431))
+- fix(ci): use windows-latest agent for Fallout pipeline ([3a08593](../../commit/3a08593))
+
+## [1.0.20] - 2026-09-03
+
+### 🐛 Bug Fixes
+
+- fix(azure-pipelines): correct git argument binding and mask auth header ([d6477ba](../../commit/d6477ba))
+
+## [1.0.19] - 2026-09-03
+
+### 🐛 Bug Fixes
+
+- fix(pipelines): make on-prem mirror failures diagnose themselves ([6733e24](../../commit/6733e24))
+
+## [1.0.18] - 2026-09-03
+
+### 🐛 Bug Fixes
+
+- fix(pipelines): restore agent credential fallback in on-prem mirror ([769f614](../../commit/769f614))
+
+## [1.0.17] - 2026-08-28
+
+### 🔧 Chores
+
+- chore(pipelines): skip on-prem mirror when agent cannot reach server ([8bfca0e](../../commit/8bfca0e))
+
+## [1.0.16] - 2026-08-28
+
+### 🔧 Chores
+
+- chore(pipelines): add on-prem mirror pipeline ([af94bdb](../../commit/af94bdb))
+
+## [1.0.15] - 2026-08-13
+
+### 📝 Other Changes
+
+- a fix for the GitHub side of the fence. Restored Github static site token. ([dd66ac4](../../commit/dd66ac4))
+
+## [1.0.14] - 2026-08-13
+
+### ✨ Features
+
+- feat(builder): add NuGet.Packaging migration to build project migrator ([f40002e](../../commit/f40002e))
+
+### 🐛 Bug Fixes
+
+- fix(builder): align migration defaults with current Fallout package ids ([d5e9662](../../commit/d5e9662))
+- fix(build): pin NuGet.Packaging to match SDK probing ([ca726ac](../../commit/ca726ac))
+
+## [1.0.13] - 2026-08-11
 
 ### 🐛 Bug Fixes
 

@@ -38,7 +38,12 @@ internal static class GitVersionResolver
             "gitversion.dll",
             framework: "net8.0");
 
-        var output = Run("dotnet", $"\"{toolPath}\" /nocache", rootDirectory);
+        return Parse(Run("dotnet", $"\"{toolPath}\" /nocache", rootDirectory));
+    }
+
+    /// <summary>GitVersion's console output, diagnostics and all, as a <see cref="GitVersion"/>.</summary>
+    internal static GitVersion Parse(string output)
+    {
         var json = ExtractJsonObject(output);
 
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };

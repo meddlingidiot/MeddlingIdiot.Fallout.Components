@@ -45,22 +45,8 @@ public interface IPackageMultiPlatform : IPushPackagesAzureDevOps, IPushPackages
     /// no CI platform detected resolves to <see cref="PackagePublishTarget.None"/>, so running
     /// ReleasePackage on a developer machine builds packages without pushing them anywhere.
     /// </summary>
-    PackagePublishTarget ResolvedPublishTarget
-    {
-        get
-        {
-            if (PublishTarget != PackagePublishTarget.Auto)
-                return PublishTarget;
-
-            if (RunningOnGitHubActions)
-                return PackagePublishTarget.GitHub;
-
-            if (RunningOnAzurePipelines)
-                return PackagePublishTarget.AzureDevOps;
-
-            return PackagePublishTarget.None;
-        }
-    }
+    PackagePublishTarget ResolvedPublishTarget =>
+        PackagePublishRouting.Resolve(PublishTarget, RunningOnGitHubActions, RunningOnAzurePipelines);
 
     /// <summary>
     /// Whether this platform owns release tagging. Only Azure DevOps tags, so a mirrored GitHub

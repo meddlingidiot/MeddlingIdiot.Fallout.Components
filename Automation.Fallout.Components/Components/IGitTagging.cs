@@ -55,18 +55,16 @@ public interface IGitTagging : IFalloutBuild, IHasGitVersion
         // check remote tag (origin)
         var remoteProc = ProcessTasks.StartProcess("git", $"ls-remote --tags origin refs/tags/{tag}");
         remoteProc.AssertWaitForExit();
-        var remoteLine = remoteProc.Output.Select(x => x.Text).LastOrDefault();
-        var remoteExists = !string.IsNullOrWhiteSpace(remoteLine);
-        string? remoteSha = null;
-        if (remoteExists)
-            remoteSha = remoteLine?.Split('\t')[0];
+        var remoteSha = ReleaseTagDecision.ParseLsRemoteSha(remoteProc.Output.Select(x => x.Text).LastOrDefault());
 
         // current HEAD
         var headSha = RunGitSingle("rev-parse HEAD");
 
-        if (localExists)
+        var plan = ReleaseTagDecision.Decide(localExists, localSha, remoteSha != null, remoteSha, headSha);
+
+        if (plan.Local != TagStep.Write)
         {
-            if (localSha == headSha)
+            if (plan.Local == TagStep.AlreadyAtHead)
             {
                 Serilog.Log.Information("Local tag {Tag} already exists and points at HEAD. Skipping creation.",
                     tag);
@@ -87,9 +85,9 @@ public interface IGitTagging : IFalloutBuild, IHasGitVersion
         }
 
         // decide whether to push
-        if (remoteExists)
+        if (plan.Remote != TagStep.Write)
         {
-            if (remoteSha == headSha)
+            if (plan.Remote == TagStep.AlreadyAtHead)
             {
                 Serilog.Log.Information("Remote tag {Tag} already exists and matches HEAD. Skipping push.",
                     tag);

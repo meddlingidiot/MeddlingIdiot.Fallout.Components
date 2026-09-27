@@ -9,12 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="10.0.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-        <PackageReference Include="TUnit" Version="1.63.0" />
+        <PackageReference Include="JetBrains.dotCover.Framework" Version="1.0.2" />
+        <PackageReference Include="TUnit" Version="1.69.21" />
     </ItemGroup>
 
     <ItemGroup>

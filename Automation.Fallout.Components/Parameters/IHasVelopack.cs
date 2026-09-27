@@ -45,7 +45,7 @@ public interface IHasVelopack: IFalloutBuild
     /// arrives as the literal string "$(SomeName)" and an unmapped one as "", and both are
     /// non-null, so they would shadow a later source that actually holds the token.
     /// </summary>
-    private static string Coalesce(params string?[] values)
+    internal static string Coalesce(params string?[] values)
     {
         foreach (var value in values)
         {

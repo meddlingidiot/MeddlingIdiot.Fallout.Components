@@ -51,6 +51,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Automation.Fallout.Components.UnitTests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <!-- Kept at upstream's 10.4.0 rather than reverted to 11.0.18: the downgrade came with
            the NuGet.Packaging 7.9.0 pin in build/_build.csproj, and both are on nuget.org. -->
       <PackageReference Include="Fallout.Build" Version="10.4.0" />
