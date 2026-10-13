@@ -73,9 +73,9 @@ jobs:
       # workloads are per-feature-band — so a solution that builds on one SDK band can
       # fail on the next one purely because the runner has no manifests for it.
       # No argument: this restores whatever the solution in the working directory needs.
-      - name: Restore .NET workloads
-        run: dotnet workload restore
-        shell: pwsh
+      #- name: Restore .NET workloads
+      #  run: dotnet workload restore
+      #  shell: pwsh
 
       # ----------------------------------------------------------------
       # Setup: Authenticate to GitHub Packages
