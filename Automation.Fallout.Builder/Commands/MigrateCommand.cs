@@ -53,6 +53,7 @@ public static class MigrateCommand
         MigrateToolManifest(workspace, report, options);
         RootItemMigrator.MigrateScripts(workspace, report);
         RootItemMigrator.MigrateConfigDirectory(workspace);
+        RootItemMigrator.RemoveSecretScanningConfig(workspace);
 
         if (options.KeepRootItems)
         {
@@ -205,6 +206,9 @@ public static class MigrateCommand
             migrated = PackageInterfaceMigrator.Rewrite(migrated, platform, out var packageNotes);
             details.AddRange(packageNotes);
 
+            migrated = SecretScanningMigrator.Rewrite(migrated, out var secretScanningNotes);
+            details.AddRange(secretScanningNotes);
+
             if (details.Count > 0)
             {
                 workspace.WriteText(source, migrated, string.Join("; ", details));
@@ -217,6 +221,12 @@ public static class MigrateCommand
             {
                 report.Warn(workspace.Relative(source),
                     "ReleasePackage now pushes to Azure DevOps Artifacts instead of GitHub Packages. Re-run with --platform GitHubActions if that is wrong");
+            }
+
+            foreach (var leftover in SecretScanningMigrator.FindLeftovers(migrated))
+            {
+                report.Warn(workspace.Relative(source),
+                    $"Still references {leftover}, which was removed with secret scanning - delete it by hand");
             }
 
             foreach (var literal in NamespaceMigrator.FindUnescapedPathLiterals(migrated))

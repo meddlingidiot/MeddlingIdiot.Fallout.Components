@@ -26,10 +26,8 @@ public interface ITest : IRunUnitTests, IRunIntegrationTests, IGenerateCoverageR
 {
     /// <summary>
     /// Main test target that runs all tests and generates coverage report.
-    /// Depends on secret scanning to ensure no secrets are committed.
     /// </summary>
     Target Test => t => t
-        .DependsOn<IScanForSecrets>(x => x.ScanForSecrets)
         .DependsOn<IGenerateCoverageReport>(x => x.CoverageReport)
         .Description("Run all tests with coverage")
         .Executes(() => { });

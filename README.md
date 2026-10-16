@@ -17,7 +17,7 @@
 A **convention-based build system for .NET, delivered as a NuGet package.** Build logic lives in
 versioned components that repositories *compose*, not in scripts that repositories *copy*. A
 consuming repo holds a ten-line `Build.cs` declaring which components apply; everything those
-components do — compile, test, coverage gates, secret scanning, packaging, tagging, release —
+components do — compile, test, coverage gates, packaging, tagging, release —
 comes from this package and is upgraded by bumping a version.
 
 Built on [Fallout](https://github.com/ChrisonSimtian/Fallout) (the maintained hard-fork of NUKE).
@@ -79,7 +79,7 @@ A build is the list of components you implement:
 
 ```csharp
 public class Build : AzurePipelinesBuild,
-    IShowVersion, IClean, ICompile, IRestore, IScanForSecrets,
+    IShowVersion, IClean, ICompile, IRestore,
     IRunUnitTests, IRunIntegrationTests, IGenerateCoverageReport, ITest,
     IUpdateChangelog, IPackageAzureDevOps, ITagRelease, IAnnounceRelease
 {
@@ -120,7 +120,7 @@ These are the assumptions the components make. Knowing them is most of knowing t
 | **Tags** | Annotated, named `v{Major.Minor.Patch}`, never overwritten — an existing tag pointing elsewhere is a warning, not a force-push | [`IGitTagging`](Automation.Fallout.Components/Components/IGitTagging.cs) |
 | **Changelog** | `CHANGELOG.md` at the repo root, written from Git history | [`IUpdateChangelog`](Automation.Fallout.Components/Components/IUpdateChangelog.cs) |
 | **Server vs local** | `IsServerBuild` decides whether releases tag and push. Local runs need explicit `--force-tag-release` | [`IDoTag`](Automation.Fallout.Components/Parameters/IDoTag.cs) |
-| **Tool provisioning** | Gitleaks and the Codecov uploader are downloaded on demand into the temp directory if not already on `PATH` — no manual install step | [`IScanForSecrets`](Automation.Fallout.Components/Components/IScanForSecrets.cs), [`IGenerateCoverageReport`](Automation.Fallout.Components/Components/IGenerateCoverageReport.cs) |
+| **Tool provisioning** | The Codecov uploader is downloaded on demand into the temp directory if not already on `PATH` — no manual install step | [`IGenerateCoverageReport`](Automation.Fallout.Components/Components/IGenerateCoverageReport.cs) |
 
 Follow the conventions and a repo needs no configuration at all. Deviate, and you state the
 deviation in one line.
@@ -134,7 +134,6 @@ downstream target, so omitting a component removes its edges rather than breakin
 ShowVersion ─(DependentFor)─▶ Clean ──▶ Restore ──▶ Compile ──┬──▶ UnitTests ────────┐
                                                               └──▶ IntegrationTests ─┴──▶ CoverageReport
                                                                                               │
-                                                  ScanForSecrets ─(runs after CoverageReport)─┤
                                                                                               ▼
                                                                                             Test
                                                                                               │
@@ -224,8 +223,7 @@ class Build : TestBuild, IMyLint { /* ... */ }
 | [`IRunUnitTests`](Automation.Fallout.Components/Components/IRunUnitTests.cs) | `UnitTests` | Runs projects matching `UnitTests` |
 | [`IRunIntegrationTests`](Automation.Fallout.Components/Components/IRunIntegrationTests.cs) | `IntegrationTests` | Runs projects matching `IntegrationTests` |
 | [`IGenerateCoverageReport`](Automation.Fallout.Components/Components/IGenerateCoverageReport.cs) | `CoverageReport` | Merges Cobertura output via ReportGenerator, **fails the build below `MinCoverageThreshold`**, optionally uploads to Codecov |
-| [`IScanForSecrets`](Automation.Fallout.Components/Components/IScanForSecrets.cs) | `ScanForSecrets` | Gitleaks over the working tree, auto-provisioning the tool. See the note in [Secret scanning](#-secret-scanning) |
-| [`ITest`](Automation.Fallout.Components/Components/ITest.cs) | `Test` | The aggregate gate — depends on coverage and secret scanning, executes nothing itself |
+| [`ITest`](Automation.Fallout.Components/Components/ITest.cs) | `Test` | The aggregate gate — depends on coverage, executes nothing itself |
 
 **Release**
 
@@ -262,11 +260,9 @@ command line, in `.fallout/parameters.json`, or via environment variable.
 | `Solution` | Auto-detected | `IHasSolution` |
 | `Configuration` | `Debug` locally, `Release` on a server | `IHasConfiguration` |
 | `BreakBuildOnWarnings` | `true` | `IHasTests` |
-| `BreakBuildOnSecretLeaks` | `true` — gates whether the scan **runs** | `IHasTests` |
 | `MinCoverageThreshold` | `0` (no gate until you set one) | `IHasTests` |
 | `UploadToCodecov` | `false` | `IHasTests` |
 | `CodecovToken` | `CODECOV_TOKEN` environment variable | `IHasTests` |
-| `GitleaksVersion` | `8.18.1` | `IScanForSecrets` |
 | `ForceTagRelease` | `false` | `IDoTag` |
 | `ArtifactsDirectoryParam` | `<root>/artifacts` | `IHasArtifacts` |
 | `ProductionFeedId` / `PrereleaseFeedId` | AFTR feed GUIDs | `IHasAzureDevOpsFeeds` |
@@ -288,7 +284,7 @@ the composition is visible and editable in your repo.
 
 | Composition | Adds | Use case |
 |---|---|---|
-| `CompileBuild` | Version, Clean, Restore, Compile, secret scan | Simple libraries |
+| `CompileBuild` | Version, Clean, Restore, Compile | Simple libraries |
 | `TestBuild` | + unit/integration tests, coverage gate | Libraries with tests |
 | `PackageBuild` | + changelog, NuGet package, tag, announce | Libraries published to a feed |
 | `VelopackBuild` | + Velopack installer, tag, announce | Desktop apps with auto-update |
@@ -325,7 +321,7 @@ preferences, then:
 - References `Automation.Fallout.Components` and `Fallout.Common`, writing versions into
   `Directory.Packages.props` when the repo uses central package management
 - Adds `PackageDownload` entries for GitVersion.Tool 6.8.2 and ReportGenerator 5.5.11
-- Copies `.gitleaks.toml`, `nuget.config`, `GitVersion.yml` and the CI definition
+- Copies `nuget.config`, `GitVersion.yml` and the CI definition
 - Generates `Build.cs` for the chosen composition and platform
 - Updates `.gitignore`, and removes a legacy root `Configuration.cs` if present
 
@@ -389,7 +385,6 @@ YourProject/
 ├── build/
 │   ├── Build.cs                   # Your composition
 │   └── _build.csproj              # net10.0
-├── .gitleaks.toml
 ├── nuget.config
 ├── GitVersion.yml
 ├── azure-pipelines.yml            # or .github/workflows/build.yml
@@ -470,19 +465,6 @@ which is what makes the threshold a real gate. With no coverage files present it
 skips rather than failing. Set `UploadToCodecov` to publish the merged report; the uploader is
 downloaded on demand.
 
-## 🔐 Secret scanning
-
-`IScanForSecrets` runs Gitleaks over the working tree, downloading the pinned version
-(`GitleaksVersion`, default 8.18.1) into the temp directory when it is not already on `PATH` — no
-manual install step.
-
-> **Read this before relying on it as a gate.** `BreakBuildOnSecretLeaks` controls whether the scan
-> **runs**, not whether findings fail the build: the target is gated by `OnlyWhenDynamic`, and
-> Gitleaks is invoked with `--exit-code 0`, so findings are logged and the build continues. Treat the
-> current behavior as *reporting*, and check the log. Removing `--exit-code 0` in
-> [`IScanForSecrets`](Automation.Fallout.Components/Components/IScanForSecrets.cs) is what turns it
-> into an enforcing gate.
-
 ## 📦 Packaging and releases
 
 `IPackage` only *produces* packages — pushing lives in a platform component because the destination
@@ -551,7 +533,7 @@ Routing: `Automation.*`, `FuelTaxAutomation.*`, `PMFuelTax*.*` → AFTR feeds; e
 - Git with real history — GitVersion fails on a shallow clone or an empty repository
 
 **Provisioned for you:** `Fallout.Cli`, GitVersion.Tool 6.8.2 and ReportGenerator 5.5.11 (as
-`PackageDownload`), plus Gitleaks and the Codecov uploader downloaded on demand.
+`PackageDownload`), plus the Codecov uploader downloaded on demand.
 
 ---
 

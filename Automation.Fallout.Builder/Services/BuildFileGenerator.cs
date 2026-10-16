@@ -67,11 +67,6 @@ public static class BuildFileGenerator
             {
                 sb.AppendLine("    bool IHasTests.BreakBuildOnWarnings => false;");
             }
-            
-            if (!config.BreakBuildOnSecretLeaks)
-            {
-                sb.AppendLine("    bool IHasTests.BreakBuildOnSecretLeaks => false;");
-            }
         }
         
         sb.AppendLine("}");
@@ -123,28 +118,28 @@ public static class BuildFileGenerator
         {
             "CompileBuild" => new List<string>
             {
-                "IShowVersion", "IClean", "ICompile", "IRestore", "IScanForSecrets"
+                "IShowVersion", "IClean", "ICompile", "IRestore"
             },
             "TestBuild" => new List<string>
             {
-                "IShowVersion", "IClean", "ICompile", "IRestore", "IScanForSecrets", "IRunUnitTests",
+                "IShowVersion", "IClean", "ICompile", "IRestore", "IRunUnitTests",
                 "IRunIntegrationTests", "IGenerateCoverageReport", "ITest"
             },
             "PackageBuild" => new List<string>
             {
-                "IShowVersion", "IClean", "ICompile", "IRestore", "IScanForSecrets",  "IRunUnitTests",
+                "IShowVersion", "IClean", "ICompile", "IRestore",  "IRunUnitTests",
                 "IRunIntegrationTests", "IGenerateCoverageReport", "ITest",
                 "IUpdateChangelog", "IPackage", "ITagRelease", "IAnnounceRelease"
             },
             "VelopackBuild" => new List<string>
             {
-                "IShowVersion", "IClean", "ICompile", "IRestore", "IScanForSecrets",  "IRunUnitTests",
+                "IShowVersion", "IClean", "ICompile", "IRestore",  "IRunUnitTests",
                 "IRunIntegrationTests", "IGenerateCoverageReport", "ITest",
                 "IUpdateChangelog", "IVelopack", "ITagRelease", "IAnnounceRelease"
             },
             "PackageAndVelopackBuild" => new List<string>
             {
-                "IShowVersion", "IClean", "ICompile", "IRestore", "IScanForSecrets", "IRunUnitTests",
+                "IShowVersion", "IClean", "ICompile", "IRestore", "IRunUnitTests",
                 "IRunIntegrationTests", "IGenerateCoverageReport", "ITest", 
                 "IUpdateChangelog", "IPackage", "IVelopack", "ITagRelease", "IAnnounceRelease"
             },

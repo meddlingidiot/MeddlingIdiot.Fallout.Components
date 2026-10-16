@@ -19,7 +19,7 @@ public class DefaultRootItemsPlatformTests
         using (Assert.Multiple())
         {
             await Assert.That(names).Contains("GitVersion.yml");
-            await Assert.That(names).Contains(".gitleaks.toml");
+            await Assert.That(names).DoesNotContain(".gitleaks.toml");
             await Assert.That(names).Contains("nuget.config");
             await Assert.That(names).Contains("global.json");
         }

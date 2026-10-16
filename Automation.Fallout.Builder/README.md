@@ -6,7 +6,7 @@ A global .NET tool that simplifies the setup, configuration and migration of Fal
 
 - **Interactive Setup**: Guided prompts using Spectre.Console for easy configuration
 - **Multiple Build Types**: Choose from pre-configured build templates:
-  - **CompileBuild**: Basic compilation with secret scanning
+  - **CompileBuild**: Basic compilation
   - **TestBuild**: Compilation, testing, and code coverage
   - **PackageBuild**: Full pipeline with NuGet package creation
   - **VelopackBuild**: Application deployment with Velopack
@@ -14,7 +14,6 @@ A global .NET tool that simplifies the setup, configuration and migration of Fal
 - **Automated Dependencies**: Automatically installs required NuGet packages and tools
 - **Configurable Options**:
   - Break build on warnings
-  - Break build on secret leaks
   - Minimum code coverage requirements
   - Velopack configuration
   
@@ -22,7 +21,7 @@ Additional automation (latest updates):
 - Upgrades the generated Fallout build project to target `net10.0`
 - Adds `PackageDownload` entries for `GitVersion.Tool (6.8.2)` and `ReportGenerator (5.5.11)`
 - Installs `GitVersion.Tool` locally (v6.8.2)
-- Copies default root config files to your repository: `.gitleaks.toml`, `nuget.config`, `GitVersion.yml`, `global.json`, `azure-pipelines.yml`
+- Copies default root config files to your repository: `nuget.config`, `GitVersion.yml`, `global.json`, `azure-pipelines.yml`
 
 ## Installation
 
@@ -58,7 +57,7 @@ autofallout setup
 The tool will guide you through:
 
 1. **Build Type Selection**: Choose the appropriate build template for your project
-2. **Quality Gates**: Configure warning and secret leak detection
+2. **Quality Gates**: Configure whether warnings break the build
 3. **Code Coverage**: Set minimum coverage thresholds (if applicable)
 4. **Velopack Settings**: Configure deployment options (if applicable)
 
@@ -69,8 +68,8 @@ The tool will:
 - Upgrade the generated build project to target `net10.0`
 - Add required NuGet packages to your build project (`Automation.Fallout.Components` and `Fallout.Common`)
 - Add `PackageDownload` entries for `GitVersion.Tool (6.8.2)` and `ReportGenerator (5.5.11)`
-- Install local tools (installs `GitVersion.Tool` v6.8.2; Gitleaks is a separate install)
-- Copy default root items: `.gitleaks.toml`, `nuget.config`, `GitVersion.yml`, `global.json`, `azure-pipelines.yml`
+- Install local tools (installs `GitVersion.Tool` v6.8.2)
+- Copy default root items: `nuget.config`, `GitVersion.yml`, `global.json`, `azure-pipelines.yml`
 - Remove the legacy `Configuration.cs` file in `build/` if present
 - Generate a customized `Build.cs` file based on your selections
 
@@ -94,13 +93,15 @@ from anywhere inside the repository (or pass `--path`). It repairs, in order:
 **`build/**/*.cs` (including custom components)**
 - Rewrites `Nuke.Common.*` → `Fallout.Common.*`, `NukeBuild` → `FalloutBuild`, `INukeBuild` → `IFalloutBuild`.
 - Rewrites `Nuke.Common.ProjectModel` → `Fallout.Solutions`. This is the namespace that does *not* map one-to-one: it moved out from under `Common` entirely, so a blind rename produces `Fallout.Common.ProjectModel` and fails with `CS0234`. The migrator repairs that spelling too.
+- Removes `IScanForSecrets` from the build class, along with any `BreakBuildOnSecretLeaks` override or `ScanForSecrets` dependency, and warns about any reference it cannot remove on its own.
 - Warns about non-verbatim string literals holding Windows paths, where `\assets\reset-password.ico` silently compiles as `\a` + `\r` escape sequences.
 
 **Everything else**
 - Replaces `nuke.globaltool` (and the now-unlisted `fallout.globaltool`) with `fallout.cli` in `.config/dotnet-tools.json`.
 - Points `build.ps1` / `build.sh` / `build.cmd` at `.fallout/temp`.
 - Carries `parameters.json` over from `.nuke/` and deletes the legacy directory.
-- Refreshes `azure-pipelines.yml`, `GitVersion.yml`, `global.json`, `nuget.config` and `.gitleaks.toml` from the Fallout defaults.
+- Refreshes `azure-pipelines.yml`, `GitVersion.yml`, `global.json` and `nuget.config` from the Fallout defaults.
+- Deletes `.gitleaks.toml` / `gitleaks.toml` — secret scanning is no longer part of Fallout.
 - Adds the Fallout and Rider entries to `.gitignore`.
 
 Originals are copied to `.fallout/Backup/migrate-<timestamp>/` before anything is rewritten. The command is idempotent — a second run reports no changes.
@@ -140,7 +141,6 @@ You can re-run setup in CI or scripts to enforce conventions without prompts by 
 Basic compilation pipeline with:
 - Version display
 - Code compilation
-- Secret scanning
 
 **Use Case**: Simple libraries or projects that only need compilation verification
 
@@ -187,7 +187,6 @@ autofallout setup
 # Follow the prompts:
 # - Select build type: TestBuild
 # - Break build on warnings? Yes
-# - Break build on secret leaks? Yes
 # - Enable code coverage requirement? Yes
 # - Minimum code coverage: 80
 
@@ -264,7 +263,6 @@ That’s it—your step is now first-class and can be shared across builds by mo
 - Git (for version control features)
 - Fallout.Cli (installed/updated automatically by this tool; exposes the `fallout` command)
 - GitVersion.Tool (installed automatically as a local tool)
-- Gitleaks (for secret scanning - install separately)
 
 ## Generated Project Structure
 
@@ -276,7 +274,6 @@ MyProject/
 │   ├── Build.cs              # Generated build script
 │   ├── _build.csproj         # Build project with dependencies (targets net10.0)
 │   └── .fallout              # Fallout configuration
-├── .gitleaks.toml            # Default gitleaks configuration
 ├── nuget.config              # Default NuGet sources configuration
 ├── GitVersion.yml            # Default GitVersion configuration
 ├── global.json               # Pins the .NET SDK version the repository builds with

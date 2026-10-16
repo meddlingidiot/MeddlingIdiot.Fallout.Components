@@ -35,7 +35,6 @@ dotnet tool install GitVersion.Tool --version 6.8.2 --local
 run nuke :add-package GitVersion.Tool --version 6.8.2
 run nuke :add-package ReportGenerator --version 5.5.11
 Delete Configuration.cs in root of _build project
-include a .gitleaks.toml file
 include a nuget.config file
 include a GitVersion.yml file
 DON'T include a dotnet-tools.json file (use the one you build)

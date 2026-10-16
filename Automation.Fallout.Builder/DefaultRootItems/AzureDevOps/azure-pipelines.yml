@@ -86,7 +86,7 @@ stages:
           # Build: Run Fallout Build (uses default target from Build.cs)
           # Default target is ReleasePackage, which performs:
           #   1. ShowVersion → Clean → Restore → Compile
-          #   2. ScanSecrets → UnitTests → IntegrationTests → CoverageReport
+          #   2. UnitTests → IntegrationTests → CoverageReport
           #   3. UpdateChangelog → Package → ReleasePackage (push to feed)
           #   4. TagRelease (if main branch)
           # ----------------------------------------------------------------

@@ -27,7 +27,8 @@ public class BuildFileGeneratorTests
         {
             await Assert.That(result).Contains("using Fallout.Common;");
             await Assert.That(result).Contains("using Automation.Fallout.Components;");
-            await Assert.That(result).Contains("public class Build : AzurePipelinesBuild, IShowVersion, IClean, ICompile, IRestore, IScanForSecrets");
+            await Assert.That(result).Contains("public class Build : AzurePipelinesBuild, IShowVersion, IClean, ICompile, IRestore");
+            await Assert.That(result).DoesNotContain("IScanForSecrets");
             await Assert.That(result).Contains("public static int Main() => Execute<Build>(");
             await Assert.That(result).Contains("x => ((ICompile)x).Compile);");
         }
@@ -53,7 +54,7 @@ public class BuildFileGeneratorTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(result).Contains("IShowVersion, IClean, ICompile, IRestore, IScanForSecrets, IRunUnitTests");
+            await Assert.That(result).Contains("IShowVersion, IClean, ICompile, IRestore, IRunUnitTests");
             await Assert.That(result).Contains("IRunIntegrationTests, IGenerateCoverageReport, ITest");
             await Assert.That(result).Contains("x => ((ITest)x).Test);");
         }
@@ -245,46 +246,6 @@ public class BuildFileGeneratorTests
         var result = BuildFileGenerator.GenerateBuildFile(config, buildInfo);
 
         await Assert.That(result).DoesNotContain("bool IHasTests.BreakBuildOnWarnings => false;");
-    }
-
-    [Test]
-    public async Task GenerateBuildFile_BreakBuildOnSecretLeaksFalse_GeneratesOverride()
-    {
-        var config = new BuildConfiguration
-        {
-            BuildType = "TestBuild",
-            BreakBuildOnSecretLeaks = false
-        };
-        var buildInfo = new DefaultBuildInfo
-        {
-            Name = "TestBuild",
-            Description = "Test build",
-            RequiresTests = true
-        };
-
-        var result = BuildFileGenerator.GenerateBuildFile(config, buildInfo);
-
-        await Assert.That(result).Contains("bool IHasTests.BreakBuildOnSecretLeaks => false;");
-    }
-
-    [Test]
-    public async Task GenerateBuildFile_BreakBuildOnSecretLeaksTrue_DoesNotGenerateOverride()
-    {
-        var config = new BuildConfiguration
-        {
-            BuildType = "TestBuild",
-            BreakBuildOnSecretLeaks = true
-        };
-        var buildInfo = new DefaultBuildInfo
-        {
-            Name = "TestBuild",
-            Description = "Test build",
-            RequiresTests = true
-        };
-
-        var result = BuildFileGenerator.GenerateBuildFile(config, buildInfo);
-
-        await Assert.That(result).DoesNotContain("bool IHasTests.BreakBuildOnSecretLeaks => false;");
     }
 
     [Test]

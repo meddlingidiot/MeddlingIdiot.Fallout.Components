@@ -34,7 +34,7 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(compileBuild).IsNotNull();
-            await Assert.That(compileBuild!.Description).IsEqualTo("Basic compilation with secret scanning");
+            await Assert.That(compileBuild!.Description).IsEqualTo("Basic compilation");
             await Assert.That(compileBuild.RequiresTests).IsFalse();
             await Assert.That(compileBuild.RequiresPackaging).IsFalse();
             await Assert.That(compileBuild.RequiresVelopack).IsFalse();
@@ -114,12 +114,11 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(compileBuild.Components).IsNotNull();
-            await Assert.That(compileBuild.Components.Count).IsEqualTo(5);
+            await Assert.That(compileBuild.Components.Count).IsEqualTo(4);
             await Assert.That(compileBuild.Components).Contains("IShowVersion");
             await Assert.That(compileBuild.Components).Contains("IClean");
             await Assert.That(compileBuild.Components).Contains("IRestore");
             await Assert.That(compileBuild.Components).Contains("ICompile");
-            await Assert.That(compileBuild.Components).Contains("IScanForSecrets");
         }
     }
 
@@ -132,12 +131,11 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(testBuild.Components).IsNotNull();
-            await Assert.That(testBuild.Components.Count).IsEqualTo(9);
+            await Assert.That(testBuild.Components.Count).IsEqualTo(8);
             await Assert.That(testBuild.Components).Contains("IShowVersion");
             await Assert.That(testBuild.Components).Contains("IClean");
             await Assert.That(testBuild.Components).Contains("IRestore");
             await Assert.That(testBuild.Components).Contains("ICompile");
-            await Assert.That(testBuild.Components).Contains("IScanForSecrets");
             await Assert.That(testBuild.Components).Contains("IRunUnitTests");
             await Assert.That(testBuild.Components).Contains("IRunIntegrationTests");
             await Assert.That(testBuild.Components).Contains("IGenerateCoverageReport");
@@ -154,12 +152,11 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(packageBuild.Components).IsNotNull();
-            await Assert.That(packageBuild.Components.Count).IsEqualTo(13);
+            await Assert.That(packageBuild.Components.Count).IsEqualTo(12);
             await Assert.That(packageBuild.Components).Contains("IShowVersion");
             await Assert.That(packageBuild.Components).Contains("IClean");
             await Assert.That(packageBuild.Components).Contains("IRestore");
             await Assert.That(packageBuild.Components).Contains("ICompile");
-            await Assert.That(packageBuild.Components).Contains("IScanForSecrets");
             await Assert.That(packageBuild.Components).Contains("IRunUnitTests");
             await Assert.That(packageBuild.Components).Contains("IRunIntegrationTests");
             await Assert.That(packageBuild.Components).Contains("IGenerateCoverageReport");
@@ -180,12 +177,11 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(velopackBuild.Components).IsNotNull();
-            await Assert.That(velopackBuild.Components.Count).IsEqualTo(13);
+            await Assert.That(velopackBuild.Components.Count).IsEqualTo(12);
             await Assert.That(velopackBuild.Components).Contains("IShowVersion");
             await Assert.That(velopackBuild.Components).Contains("IClean");
             await Assert.That(velopackBuild.Components).Contains("IRestore");
             await Assert.That(velopackBuild.Components).Contains("ICompile");
-            await Assert.That(velopackBuild.Components).Contains("IScanForSecrets");
             await Assert.That(velopackBuild.Components).Contains("IRunUnitTests");
             await Assert.That(velopackBuild.Components).Contains("IRunIntegrationTests");
             await Assert.That(velopackBuild.Components).Contains("IGenerateCoverageReport");
@@ -206,12 +202,11 @@ public class DefaultBuildDiscoveryTests
         using (Assert.Multiple())
         {
             await Assert.That(packageAndVelopackBuild.Components).IsNotNull();
-            await Assert.That(packageAndVelopackBuild.Components.Count).IsEqualTo(14);
+            await Assert.That(packageAndVelopackBuild.Components.Count).IsEqualTo(13);
             await Assert.That(packageAndVelopackBuild.Components).Contains("IShowVersion");
             await Assert.That(packageAndVelopackBuild.Components).Contains("IClean");
             await Assert.That(packageAndVelopackBuild.Components).Contains("IRestore");
             await Assert.That(packageAndVelopackBuild.Components).Contains("ICompile");
-            await Assert.That(packageAndVelopackBuild.Components).Contains("IScanForSecrets");
             await Assert.That(packageAndVelopackBuild.Components).Contains("IRunUnitTests");
             await Assert.That(packageAndVelopackBuild.Components).Contains("IRunIntegrationTests");
             await Assert.That(packageAndVelopackBuild.Components).Contains("IGenerateCoverageReport");
@@ -315,13 +310,13 @@ public class DefaultBuildDiscoveryTests
     }
 
     [Test]
-    public async Task GetAvailableBuilds_AllBuildsIncludeIScanForSecrets()
+    public async Task GetAvailableBuilds_NoBuildIncludesIScanForSecrets()
     {
         var builds = DefaultBuildDiscovery.GetAvailableBuilds();
 
         foreach (var build in builds)
         {
-            await Assert.That(build.Components).Contains("IScanForSecrets");
+            await Assert.That(build.Components).DoesNotContain("IScanForSecrets");
         }
     }
 

@@ -11,8 +11,8 @@ public static class DefaultBuildDiscovery
             new()
             {
                 Name = "CompileBuild",
-                Description = "Basic compilation with secret scanning",
-                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile", "IScanForSecrets" },
+                Description = "Basic compilation",
+                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile" },
                 RequiresTests = false,
                 RequiresPackaging = false,
                 RequiresVelopack = false
@@ -21,7 +21,7 @@ public static class DefaultBuildDiscovery
             {
                 Name = "TestBuild",
                 Description = "Compilation, testing, and code coverage",
-                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile", "IScanForSecrets",
+                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile",
                     "IRunUnitTests", "IRunIntegrationTests", "IGenerateCoverageReport", "ITest" },
                 RequiresTests = true,
                 RequiresPackaging = false,
@@ -31,7 +31,7 @@ public static class DefaultBuildDiscovery
             {
                 Name = "PackageBuild",
                 Description = "Full pipeline with NuGet package creation",
-                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile", "IScanForSecrets",
+                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile",
                     "IRunUnitTests", "IRunIntegrationTests", "IGenerateCoverageReport", "ITest", "IUpdateChangelog",
                     "IPackage", "ITagRelease", "IAnnounceRelease" },
                 RequiresTests = true,
@@ -42,7 +42,7 @@ public static class DefaultBuildDiscovery
             {
                 Name = "VelopackBuild",
                 Description = "Application deployment with Velopack",
-                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile", "IScanForSecrets",
+                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile",
                     "IRunUnitTests", "IRunIntegrationTests", "IGenerateCoverageReport", "ITest", "IUpdateChangelog", 
                     "IVelopack", "ITagRelease", "IAnnounceRelease" },
                 RequiresTests = true,
@@ -53,7 +53,7 @@ public static class DefaultBuildDiscovery
             {
                 Name = "PackageAndVelopackBuild",
                 Description = "Complete pipeline with both NuGet and Velopack",
-                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile", "IScanForSecrets",
+                Components = new() { "IShowVersion", "IClean", "IRestore", "ICompile",
                     "IRunUnitTests", "IRunIntegrationTests", "IGenerateCoverageReport", "ITest", "IUpdateChangelog",
                     "IPackage", "IVelopack", "ITagRelease", "IAnnounceRelease" },
                 RequiresTests = true,

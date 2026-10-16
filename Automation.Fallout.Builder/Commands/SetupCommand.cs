@@ -140,11 +140,6 @@ public static class SetupCommand
             "[yellow]Break build on warnings?[/]",
             defaultValue: true);
 
-        // Ask about secret leaks
-        config.BreakBuildOnSecretLeaks = AnsiConsole.Confirm(
-            "[yellow]Break build on secret leaks?[/]",
-            defaultValue: true);
-
         // Ask about code coverage if tests are included
         if (selectedBuild.RequiresTests)
         {
@@ -259,9 +254,6 @@ public static class SetupCommand
             workingDirectory,
             "GitVersion.Tool",
             "6.8.2");
-
-        // Install Gitleaks for secret scanning
-        AnsiConsole.MarkupLine("[yellow]Note: Gitleaks should be installed separately from https://github.com/gitleaks/gitleaks[/]");
     }
 
     private static async Task GenerateBuildFileAsync(string buildDir, BuildConfiguration config)

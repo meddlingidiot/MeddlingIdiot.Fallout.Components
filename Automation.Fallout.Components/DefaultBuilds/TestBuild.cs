@@ -4,7 +4,7 @@ using Fallout.Common;
 
 namespace Automation.Fallout.Components.DefaultBuilds;
 
-public class TestBuild : AzurePipelinesBuild, IShowVersion, IClean, ICompile, IRestore, IScanForSecrets, 
+public class TestBuild : AzurePipelinesBuild, IShowVersion, IClean, ICompile, IRestore,
     IRunUnitTests, IRunIntegrationTests, IGenerateCoverageReport, ITest, IUpdateChangelog,
     IPackageAzureDevOps, IVelopack, ITagRelease, IAnnounceRelease
 {

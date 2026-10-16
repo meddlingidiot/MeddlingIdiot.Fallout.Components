@@ -113,6 +113,18 @@ public static class RootItemMigrator
         workspace.DeleteDirectory(legacyDirectory, "Removed the legacy .nuke directory");
     }
 
+    /// <summary>
+    /// Deletes the Gitleaks configuration. Secret scanning was removed from Fallout, so nothing reads
+    /// it any more.
+    /// </summary>
+    public static void RemoveSecretScanningConfig(MigrationWorkspace workspace)
+    {
+        foreach (var fileName in SecretScanningMigrator.ConfigFiles)
+        {
+            workspace.DeleteFile(workspace.Resolve(fileName), "Removed the Gitleaks configuration - secret scanning is no longer part of Fallout");
+        }
+    }
+
     public static void CopyDefaultRootItems(MigrationWorkspace workspace, BuildPlatform platform)
     {
         foreach (var item in NuGetPackageInstaller.GetDefaultRootItems(platform))

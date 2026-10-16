@@ -9,7 +9,7 @@ using Automation.Fallout.Components.Parameters;
 /// Build configuration for PackageBuild
 /// </summary>
 
-public class Build : GitHubActionsBuild, IShowVersion, IClean, ICompile, IRestore, IScanForSecrets, IRunUnitTests, IRunIntegrationTests, IGenerateCoverageReport, ITest, IUpdateChangelog, INuGetPublish, ITagRelease, IAnnounceRelease
+public class Build : GitHubActionsBuild, IShowVersion, IClean, ICompile, IRestore, IRunUnitTests, IRunIntegrationTests, IGenerateCoverageReport, ITest, IUpdateChangelog, INuGetPublish, ITagRelease, IAnnounceRelease
 {
 
     public static int Main() => Execute<Build>(

@@ -5,7 +5,7 @@ using Fallout.Common;
 namespace Automation.Fallout.Components.DefaultBuilds;
 
 public class VelopackBuild : AzurePipelinesBuild, IShowVersion,
-    IClean, ICompile, IRestore, IScanForSecrets, IRunUnitTests, IRunIntegrationTests, 
+    IClean, ICompile, IRestore, IRunUnitTests, IRunIntegrationTests, 
     IGenerateCoverageReport, ITest, IUpdateChangelog,
     IVelopack, ITagRelease, IAnnounceRelease
 {
