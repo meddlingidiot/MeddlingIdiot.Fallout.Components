@@ -118,7 +118,7 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
             
             if (releaseType == "Prerelease")
             {
-                vpkArgs += $" --delta none";
+                vpkArgs += $" --delta None";
             }
             
             if (!string.IsNullOrEmpty(AzureBlobEndpoint))
