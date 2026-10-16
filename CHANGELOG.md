@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 1.0.28
+
+### 📝 Other Changes
+
+- remove IScanForSecrets.cs. cleaning up stuff ([25a8d48](../../commit/25a8d48))
+- falling the instructions for vpk and used CamelCase None ([8b9b42f](../../commit/8b9b42f))
+- instructions updated from nuke to fallout ([2121605](../../commit/2121605))
+- changed default workloads to not run by default. ([d4dce90](../../commit/d4dce90))
+
+## [1.0.27] - 2026-09-26
+
+### 📝 Other Changes
+
+- uPGRADED TO .NET 10 and added coverage for tests. ([cdbb90c](../../commit/cdbb90c))
+
+## [1.0.26] - 2026-09-22
+
+### 🐛 Bug Fixes
+
+- fix(release): skip a GitHub release that another run already made ([f24ef24](../../commit/f24ef24))
+
+## [1.0.25] - 2026-09-22
+
+### ✨ Features
+
+- feat(velopack): MeddlingIdiot splash image for installers ([aeafa76](../../commit/aeafa76))
+
 ## [1.0.24] - 2026-09-11
 
 ### 📝 Other Changes
