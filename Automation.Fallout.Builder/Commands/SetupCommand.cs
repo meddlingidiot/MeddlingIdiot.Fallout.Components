@@ -97,8 +97,8 @@ public static class SetupCommand
 
         AnsiConsole.MarkupLine("\n[yellow]Next steps:[/]");
         AnsiConsole.MarkupLine("  1. Review the generated build/Build.cs file");
-        AnsiConsole.MarkupLine("  2. Run [cyan]nuke --help[/] to see available targets");
-        AnsiConsole.MarkupLine("  3. Run [cyan]nuke[/] to execute the default build");
+        AnsiConsole.MarkupLine("  2. Run [cyan]fallout --help[/] to see available targets");
+        AnsiConsole.MarkupLine("  3. Run [cyan]fallout[/] to execute the default build");
 
         return 0;
     }
