@@ -74,7 +74,8 @@ public class BuildProjectMigratorTests
         using (Assert.Multiple())
         {
             await Assert.That(result.Xml).DoesNotContain("Nuke.Common");
-            await Assert.That(result.Xml).Contains("Automation.Fallout.Components");
+            await Assert.That(result.Xml).DoesNotContain("Automation.Nuke.Components");
+            await Assert.That(result.Xml).Contains("MeddlingIdiot.Fallout.Components");
             await Assert.That(result.Xml).Contains("Fallout.Common");
         }
     }
@@ -120,7 +121,7 @@ public class BuildProjectMigratorTests
         using (Assert.Multiple())
         {
             await Assert.That(result.Xml).Contains("""Include="Fallout.Common" Version="11.0.17" """.TrimEnd());
-            await Assert.That(result.Xml).Contains("""Include="Automation.Fallout.Components" Version="1.0.1" """.TrimEnd());
+            await Assert.That(result.Xml).Contains("""Include="MeddlingIdiot.Fallout.Components" Version="1.0.1" """.TrimEnd());
         }
     }
 
@@ -152,7 +153,7 @@ public class BuildProjectMigratorTests
         using (Assert.Multiple())
         {
             await Assert.That(result.Xml).Contains("""<PackageReference Include="Fallout.Common" />""");
-            await Assert.That(result.Xml).Contains("""<PackageReference Include="Automation.Fallout.Components" />""");
+            await Assert.That(result.Xml).Contains("""<PackageReference Include="MeddlingIdiot.Fallout.Components" />""");
             await Assert.That(result.Notes).Contains(n => n.Contains("Moved the Fallout.Common version"));
         }
     }
@@ -171,7 +172,7 @@ public class BuildProjectMigratorTests
                                                  </PropertyGroup>
                                                  <ItemGroup>
                                                    <PackageReference Include="Fallout.Common" />
-                                                   <PackageReference Include="Automation.Fallout.Components" />
+                                                   <PackageReference Include="MeddlingIdiot.Fallout.Components" />
                                                  </ItemGroup>
                                                </Project>
                                                """;
@@ -180,7 +181,27 @@ public class BuildProjectMigratorTests
             new MigrationPackageVersions("1.0.2", "11.0.18"), centrallyManaged: true);
 
         await Assert.That(result.Xml).DoesNotContain("""Include="Fallout.Common" Version=""");
-        await Assert.That(result.Xml).DoesNotContain("""Include="Automation.Fallout.Components" Version=""");
+        await Assert.That(result.Xml).DoesNotContain("""Include="MeddlingIdiot.Fallout.Components" Version=""");
+    }
+
+    /// <summary>
+    /// Automation.Fallout.Components is the AFTR feed's id, not this package's. Adding the nuget.org
+    /// id beside it would compile every component twice, and its version does not exist on nuget.org.
+    /// </summary>
+    [Test]
+    public async Task Migrate_RenamesTheAutomationPackageIdToTheNuGetOrgId()
+    {
+        var result = BuildProjectMigrator.Migrate(BlindlyRenamedProject, new MigrationOptions());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Xml).DoesNotContain("""Include="Automation.Fallout.Components""");
+            await Assert.That(result.Xml)
+                .Contains($"""Include="MeddlingIdiot.Fallout.Components" Version="{MigrationDefaults.ComponentsVersion}" """.TrimEnd());
+            await Assert.That(result.Xml).DoesNotContain("1.0.47");
+            await Assert.That(result.Notes)
+                .Contains("Renamed package Automation.Fallout.Components to MeddlingIdiot.Fallout.Components");
+        }
     }
 
     /// <summary>

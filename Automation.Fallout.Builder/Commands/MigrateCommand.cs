@@ -314,7 +314,7 @@ public static class MigrateCommand
         // Components first: it is what constrains the Fallout.Common floor.
         if (options.ComponentsVersion == null)
         {
-            await NuGetPackageInstaller.AddPackageToProjectAsync(buildProject, "Automation.Fallout.Components",
+            await NuGetPackageInstaller.AddPackageToProjectAsync(buildProject, MigrationPackageVersionResolver.ComponentsPackageId,
                 repositoryRoot: workspace.Root, fallbackVersion: MigrationDefaults.ComponentsVersion);
         }
 

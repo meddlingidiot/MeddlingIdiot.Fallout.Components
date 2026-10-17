@@ -74,12 +74,16 @@ public static class BuildProjectMigrator
     {
         var references = ByLocalName(root, "PackageReference").ToList();
 
-        // Automation.Nuke.Components -> Automation.Fallout.Components. The Nuke-era version (1.0.47)
-        // does not exist for the Fallout package, so it always has to be re-pinned.
-        foreach (var reference in references.Where(r => Include(r) == "Automation.Nuke.Components"))
+        // Automation.Nuke.Components / Automation.Fallout.Components -> MeddlingIdiot.Fallout.Components.
+        // Leaving an old id in place would add the new package beside it and compile every component
+        // twice. No old version exists under the nuget.org id, so it always has to be re-pinned.
+        var componentsId = MigrationPackageVersionResolver.ComponentsPackageId;
+        foreach (var reference in references.Where(r => MigrationPackageVersionResolver.LegacyComponentsPackageIds
+                     .Contains(Include(r), StringComparer.OrdinalIgnoreCase)))
         {
-            SetInclude(reference, "Automation.Fallout.Components");
-            notes.Add("Renamed package Automation.Nuke.Components to Automation.Fallout.Components");
+            notes.Add($"Renamed package {Include(reference)} to {componentsId}");
+            SetInclude(reference, componentsId);
+            reference.Attribute("Version")?.Remove();
         }
 
         // Anything else still on a Nuke package is dead weight - Fallout.Common replaces Nuke.Common.
@@ -90,7 +94,7 @@ public static class BuildProjectMigrator
         }
 
         UpsertPackageReference(root, "Fallout.Common", versions.FalloutCommon, centrallyManaged, notes);
-        UpsertPackageReference(root, "Automation.Fallout.Components", versions.Components, centrallyManaged, notes);
+        UpsertPackageReference(root, componentsId, versions.Components, centrallyManaged, notes);
 
         // Not a Fallout package: this overrides the NuGet.Packaging that Fallout.Common transitively
         // pulls so the build host's NuGet.Frameworks matches the SDK's. See MigrationDefaults.

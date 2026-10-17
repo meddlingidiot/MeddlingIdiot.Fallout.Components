@@ -223,7 +223,7 @@ public static class SetupCommand
         // The components package moves independently of the CLI, so setup takes its newest release.
         var componentsAdded = await NuGetPackageInstaller.AddPackageToProjectAsync(
             buildCsproj,
-            "Automation.Fallout.Components",
+            MigrationPackageVersionResolver.ComponentsPackageId,
             repositoryRoot: workingDirectory,
             fallbackVersion: MigrationDefaults.ComponentsVersion);
 

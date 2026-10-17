@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text;
 using Automation.Fallout.Builder.Commands;
 using Automation.Fallout.Builder.Models;
+using Automation.Fallout.Builder.Services;
 
 namespace Automation.Fallout.Builder;
 
@@ -78,7 +79,7 @@ class Program
 
         var componentsVersionOption = new Option<string?>("--components-version")
         {
-            Description = $"Automation.Fallout.Components version to pin. Default: {MigrationDefaults.ComponentsVersion}."
+            Description = $"{MigrationPackageVersionResolver.ComponentsPackageId} version to pin. Default: {MigrationDefaults.ComponentsVersion}."
         };
 
         var globalToolVersionOption = new Option<string?>("--global-tool-version")

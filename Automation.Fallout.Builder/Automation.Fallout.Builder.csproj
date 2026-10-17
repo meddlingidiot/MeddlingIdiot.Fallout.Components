@@ -39,7 +39,6 @@
         <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <RepositoryUrl>https://dev.azure.com/AFTR/Automation/_git/Automation.Fallout.Builder</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

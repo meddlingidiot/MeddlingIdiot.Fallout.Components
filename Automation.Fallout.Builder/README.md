@@ -28,15 +28,15 @@ Additional automation (latest updates):
 Install as a global .NET tool:
 
 ```bash
-dotnet tool install --global Automation.Fallout.Builder
+dotnet tool install --global MeddlingIdiot.Fallout.Builder
 ```
 
 Or install from a local package:
 
 ```bash
-dotnet tool uninstall -g Automation.Fallout.Builder
+dotnet tool uninstall -g MeddlingIdiot.Fallout.Builder
 dotnet pack ./Automation.Fallout.Builder/Automation.Fallout.Builder.csproj
-dotnet tool install --global --add-source "./Automation.Fallout.Builder/nupkg" Automation.Fallout.Builder
+dotnet tool install --global --add-source "./Automation.Fallout.Builder/nupkg" MeddlingIdiot.Fallout.Builder
 ```
 
 ## Commands
@@ -66,7 +66,7 @@ The tool will:
 - Update the Fallout global tool to the latest available
 - Run `fallout :setup` to create the build infrastructure (if `build/` doesn't exist)
 - Upgrade the generated build project to target `net10.0`
-- Add required NuGet packages to your build project (`Automation.Fallout.Components` and `Fallout.Common`)
+- Add required NuGet packages to your build project (`MeddlingIdiot.Fallout.Components` and `Fallout.Common`)
 - Add `PackageDownload` entries for `GitVersion.Tool (6.8.2)` and `ReportGenerator (5.5.11)`
 - Install local tools (installs `GitVersion.Tool` v6.8.2)
 - Copy default root items: `nuget.config`, `GitVersion.yml`, `global.json`, `azure-pipelines.yml`
@@ -85,7 +85,7 @@ from anywhere inside the repository (or pass `--path`). It repairs, in order:
 
 **`build/_build.csproj`**
 - Corrects the `Fallout.Common` version. This is the one that actually breaks the build: the rename keeps the old `Nuke.Common` version (e.g. `10.1.0`), which resolves an *unrelated* 10.x `Fallout.Common` and fails restore with `NU1605: Detected package downgrade`.
-- Renames `Automation.Nuke.Components` → `Automation.Fallout.Components` and re-pins it, since the Nuke-era version does not exist for the Fallout package.
+- Renames `Automation.Nuke.Components` and `Automation.Fallout.Components` → `MeddlingIdiot.Fallout.Components` and re-pins it, since no old version exists under the nuget.org id. Namespaces stay `Automation.Fallout.Components`, so `Build.cs` needs no change.
 - Renames the `Nuke*` MSBuild properties (`NukeRootDirectory` → `FalloutRootDirectory`, and friends).
 - Drops any leftover `Nuke.*` package references.
 - Upgrades `TargetFramework` to `net10.0` and adds the `GitVersion.Tool` / `ReportGenerator` `PackageDownload` entries.
@@ -116,7 +116,7 @@ Originals are copied to `.fallout/Backup/migrate-<timestamp>/` before anything i
 | `--keep-root-items` | Leave `azure-pipelines.yml`, `GitVersion.yml`, `global.json` and `nuget.config` alone. Use this when the pipeline is customised. |
 | `--refresh-packages` | After repairing the project, run `dotnet add package` to move to the newest feed versions. |
 | `--fallout-version` | Pin `Fallout.Common` explicitly. |
-| `--components-version` | Pin `Automation.Fallout.Components` explicitly. |
+| `--components-version` | Pin `MeddlingIdiot.Fallout.Components` explicitly. |
 | `--global-tool-version` | `Fallout.Cli` version for the tool manifest. |
 
 ### Recommended flow
@@ -131,7 +131,7 @@ Build the `_build` project on its own first — every migration error lands ther
 
 ### Non-interactive (CI) usage
 
-You can re-run setup in CI or scripts to enforce conventions without prompts by answering with defaults when asked. For fully non-interactive flows, pre-create a `_build.csproj` that already references `Automation.Fallout.Components` and commit your chosen `Build.cs` so `autofallout setup` becomes a no-op.
+You can re-run setup in CI or scripts to enforce conventions without prompts by answering with defaults when asked. For fully non-interactive flows, pre-create a `_build.csproj` that already references `MeddlingIdiot.Fallout.Components` and commit your chosen `Build.cs` so `autofallout setup` becomes a no-op.
 
 `autofallout migrate` is fully non-interactive already and is safe to run in a pipeline.
 
@@ -258,7 +258,7 @@ That’s it—your step is now first-class and can be shared across builds by mo
 
 ## Requirements
 
-- .NET SDK 8.0 or higher to run this tool (`Automation.Fallout.Builder`)
+- .NET SDK 8.0 or higher to run this tool (`MeddlingIdiot.Fallout.Builder`)
 - .NET SDK 10.0 to build and run the generated Fallout build (the setup upgrades `_build.csproj` to `net10.0`)
 - Git (for version control features)
 - Fallout.Cli (installed/updated automatically by this tool; exposes the `fallout` command)
@@ -301,7 +301,7 @@ export PATH="$PATH:$HOME/.dotnet/tools"  # Linux/Mac
 # or add %USERPROFILE%\.dotnet\tools to PATH on Windows
 ```
 
-**Package not found**: Ensure the Automation.Fallout.Components package is published to your NuGet feed
+**Package not found**: `MeddlingIdiot.Fallout.Components` comes from nuget.org; make sure `nuget.config` has nuget.org as a source and no package source mapping routes `MeddlingIdiot.*` elsewhere
 
 **Permission errors**: Run with appropriate permissions or use `--global` flag for tool installation
 
@@ -315,7 +315,7 @@ To build and test locally:
 cd Automation.Fallout.Builder
 dotnet build
 dotnet pack
-dotnet tool install --global --add-source ./nupkg Automation.Fallout.Builder
+dotnet tool install --global --add-source ./nupkg MeddlingIdiot.Fallout.Builder
 ```
 
 ## Contributing

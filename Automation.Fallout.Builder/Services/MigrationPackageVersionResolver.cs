@@ -4,7 +4,7 @@ using Spectre.Console;
 namespace Automation.Fallout.Builder.Services;
 
 /// <summary>
-/// Works out which Automation.Fallout.Components and Fallout.Common versions the migration should pin.
+/// Works out which MeddlingIdiot.Fallout.Components and Fallout.Common versions the migration should pin.
 /// </summary>
 /// <remarks>
 /// The versions in <see cref="MigrationDefaults"/> are whatever was current on the AFTR Azure DevOps
@@ -16,7 +16,18 @@ namespace Automation.Fallout.Builder.Services;
 /// </remarks>
 public static class MigrationPackageVersionResolver
 {
-    public const string ComponentsPackageId = "Automation.Fallout.Components";
+    /// <summary>
+    /// The nuget.org package id. Deliberately not the Automation.Fallout.Components namespace the
+    /// package's types live in: that id belongs to the AFTR feed's diverged fork.
+    /// </summary>
+    public const string ComponentsPackageId = "MeddlingIdiot.Fallout.Components";
+
+    /// <summary>
+    /// Ids a repository may still reference, renamed to <see cref="ComponentsPackageId"/> on migrate.
+    /// Their versions are never carried over - none of them exists under the nuget.org id.
+    /// </summary>
+    public static readonly string[] LegacyComponentsPackageIds =
+        ["Automation.Nuke.Components", "Automation.Fallout.Components"];
     public const string FalloutCommonPackageId = "Fallout.Common";
 
     public static async Task<MigrationPackageVersions> ResolveAsync(
@@ -51,8 +62,8 @@ public static class MigrationPackageVersionResolver
 
         var feedVersion = await NuGetVersionResolver.GetLatestStableVersionAsync(packageId, repositoryRoot);
 
-        // Only meaningful once the reference is already the Fallout package - a repository still on
-        // Automation.Nuke.Components has nothing pinned under this id.
+        // Only meaningful once the reference is already the nuget.org package - a repository still on
+        // one of the LegacyComponentsPackageIds has nothing pinned under this id.
         var existingPin = CentralPackageManagement.ReadPackageReferenceVersion(projectXml, packageId);
 
         var chosen = Choose(feedVersion, existingPin, shippedDefault);

@@ -13,16 +13,17 @@ public static class MigrationDefaults
     public const string FalloutCommonVersion = "10.4.0";
 
     /// <summary>
-    /// The Automation.Fallout.Components version to pin when the project still references the
-    /// Nuke-era Automation.Nuke.Components package. Last resort only - the repository's own feeds
+    /// The MeddlingIdiot.Fallout.Components version to pin when the project still references one of
+    /// the old Automation.* component packages. Last resort only - the repository's own feeds
     /// and its existing pin both win over this, so it does not track routine releases.
     /// </summary>
     /// <remarks>
     /// Bump this only when the Fallout.Common line moves. This package carries a hard dependency on
     /// one exact <see cref="FalloutCommonVersion"/>, and a pair that disagrees fails restore with
-    /// NU1605. 1.0.14-beta.2 is the first build against 10.4.0; 1.0.13 and earlier need 11.0.18.
+    /// NU1605. 1.0.24 is the first release under the nuget.org id and builds against 10.4.0; the
+    /// AFTR feed's 1.0.14-beta.2 that used to sit here does not exist under this id.
     /// </remarks>
-    public const string ComponentsVersion = "1.0.14-beta.2";
+    public const string ComponentsVersion = "1.0.24";
 
     /// <summary>
     /// The Fallout CLI package id. The tool ships under two ids: fallout.globaltool carries the

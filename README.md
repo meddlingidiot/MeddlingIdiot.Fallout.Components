@@ -299,11 +299,11 @@ the composition is visible and editable in your repo.
 
 ## 🚀 Bootstrap: the `autofallout` tool
 
-[`Automation.Fallout.Builder`](Automation.Fallout.Builder/README.md) is a global .NET tool that
+[`MeddlingIdiot.Fallout.Builder`](Automation.Fallout.Builder/README.md) is a global .NET tool that
 gets a repository from nothing to a working build.
 
 ```bash
-dotnet tool install --global Automation.Fallout.Builder
+dotnet tool install --global MeddlingIdiot.Fallout.Builder
 cd MyProject
 autofallout setup
 fallout            # run the build
@@ -318,7 +318,7 @@ preferences, then:
 
 - Installs/updates the Fallout CLI (`Fallout.Cli`, exposing `fallout`) and runs `fallout :setup`
 - Creates `build/_build.csproj` targeting **net10.0**
-- References `Automation.Fallout.Components` and `Fallout.Common`, writing versions into
+- References `MeddlingIdiot.Fallout.Components` and `Fallout.Common`, writing versions into
   `Directory.Packages.props` when the repo uses central package management
 - Adds `PackageDownload` entries for GitVersion.Tool 6.8.2 and ReportGenerator 5.5.11
 - Copies `nuget.config`, `GitVersion.yml` and the CI definition
@@ -635,4 +635,4 @@ Luke Lanphear
 
 ## 🔗 Repository
 
-https://dev.azure.com/AFTR/Automation/_git/Automation.Fallout.Components
+https://github.com/meddlingidiot/MeddlingIdiot.Fallout.Components
