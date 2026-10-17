@@ -99,9 +99,8 @@ jobs:
       # NuGetPublishDecision and they are tested.
       # ----------------------------------------------------------------
       # The SAS token is mapped through env: rather than passed on the command line, where it
-      # would show up in process listings on the runner. Fallout resolves it from any of
-      # AZURE_BLOB_SAS_TOKEN_LOCAL, AZUREBLOBSASTOKEN or AZURE_BLOB_SAS_TOKEN; an unset secret
-      # expands to empty, in which case the Velopack targets warn and skip the upload.
+      # would show up in process listings on the runner. An unset secret expands to empty, in
+      # which case the Velopack targets warn and skip the upload.
       - name: Execute Fallout Build
         run: |
           dotnet tool restore
@@ -110,7 +109,7 @@ jobs:
         env:
           # Kept from upstream: unset expands to empty and the Velopack targets skip the
           # upload, which is what happens here - this repository ships packages, not apps.
-          AZURE_BLOB_SAS_TOKEN_LOCAL: ${{ secrets.AZURE_BLOB_SAS_TOKEN }}
+          AZURE_BLOB_SAS_TOKEN: ${{ secrets.AZURE_BLOB_SAS_TOKEN }}
           # The short-lived key from the login step above, read by IHasNuGetOrg. Empty on a
           # branch build, which is fine: PushPackagesToNuGet decides whether to publish
           # before it ever reads a credential.

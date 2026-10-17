@@ -82,9 +82,9 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
         .Description("Download existing Velopack releases")
         .Executes(() =>
         {
-            if (string.IsNullOrEmpty(AzureBlobSasTokenLocal))
+            if (string.IsNullOrEmpty(AzureBlobSasToken))
             {
-                Serilog.Log.Warning("AzureBlobSasToken not provided, skipping download of existing releases");
+                Serilog.Log.Warning("AZURE_BLOB_SAS_TOKEN not provided, skipping download of existing releases");
                 return;
             }
 
@@ -112,7 +112,7 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
             var vpkArgs = $"download az " +
                           $"--container {VelopackBlobContainer} " +
                           $"--account {AzureBlobAccount} " +
-                          $"--sas \"{AzureBlobSasTokenLocal}\" " +
+                          $"--sas \"{AzureBlobSasToken}\" " +
                           $"--channel {channel} " +
                           $"--outputDir \"{downloadDir}\"";
             
@@ -131,7 +131,7 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
                 vpkArgs += $" --timeout {AzureBlobTimeout}";
             }
 
-            Serilog.Log.Information("Running: vpk {Args}", vpkArgs.Replace(AzureBlobSasTokenLocal, "***"));
+            Serilog.Log.Information("Running: vpk {Args}", vpkArgs.Replace(AzureBlobSasToken, "***"));
 
             ProcessTasks.StartProcess(vpkToolPath, vpkArgs, workingDirectory: RootDirectory)
                 .WaitForExit();
@@ -284,9 +284,9 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
         .Description("Upload Velopack releases")
         .Executes(() =>
         {
-            if (string.IsNullOrEmpty(AzureBlobSasTokenLocal))
+            if (string.IsNullOrEmpty(AzureBlobSasToken))
             {
-                Serilog.Log.Warning("AzureBlobSasToken not provided, skipping upload");
+                Serilog.Log.Warning("AZURE_BLOB_SAS_TOKEN not provided, skipping upload");
                 return;
             }
             var velopackProject = Solution.GetProject(VelopackProjectName);
@@ -318,7 +318,7 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
                           $"--outputDir \"{VelopackPublishDirectory}\" " +
                           $"--container {VelopackBlobContainer} " +
                           $"--account {AzureBlobAccount} " +
-                          $"--sas \"{AzureBlobSasTokenLocal}\" " +
+                          $"--sas \"{AzureBlobSasToken}\" " +
                           $"--channel {channel} " +
                           $"--keepMaxReleases {keepMaxReleases}";
 
@@ -334,7 +334,7 @@ public interface IVelopack : IFalloutBuild, IHasSolution, IHasConfiguration, IHa
 
             var vpkToolPath = ResolveVelopackCli();
 
-            Serilog.Log.Information("Running: vpk {Args}", vpkArgs.Replace(AzureBlobSasTokenLocal, "***"));
+            Serilog.Log.Information("Running: vpk {Args}", vpkArgs.Replace(AzureBlobSasToken, "***"));
 
             ProcessTasks.StartProcess(vpkToolPath, vpkArgs, workingDirectory: RootDirectory)
                 .AssertZeroExitCode();

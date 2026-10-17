@@ -22,28 +22,45 @@ public interface IHasVelopack: IFalloutBuild
                                            "staftrinstallers";
     [Parameter] string AzureBlobEndpoint => TryGetValue(() => AzureBlobEndpoint) ?? 
                                             "https://staftrinstallers.blob.core.windows.net";
-    [Parameter, Secret] string AzureBlobSasToken => TryGetValue(() => AzureBlobSasToken);
-
-    // The SAS token the Velopack targets actually use. There is deliberately no default: a SAS
-    // token is a live credential and does not belong in source. When it is missing the Velopack
-    // targets log a warning and skip the download/upload rather than failing the build.
-    //
-    // Several sources are checked because the CI definitions in this org do not agree on one:
-    // pipelines pass --azure-blob-sas-token, Azure DevOps maps AZUREBLOBSASTOKEN, and GitHub
-    // Actions maps AZURE_BLOB_SAS_TOKEN. Before this fallback existed only AzureBlobSasTokenLocal
-    // was read, so every one of those wirings resolved to empty and the upload silently skipped.
-    [Parameter] string AzureBlobSasTokenLocal =>
-        Coalesce(
-            TryGetValue(() => AzureBlobSasTokenLocal),
-            Environment.GetEnvironmentVariable("AZURE_BLOB_SAS_TOKEN_LOCAL"),
-            AzureBlobSasToken,
-            Environment.GetEnvironmentVariable("AZUREBLOBSASTOKEN"),
-            Environment.GetEnvironmentVariable("AZURE_BLOB_SAS_TOKEN"));
+    // The SAS token the Velopack targets use: --azure-blob-sas-token, or the AZURE_BLOB_SAS_TOKEN
+    // environment variable, which is the secret's name in both the MeddlingIdiot GitHub org and
+    // AFTR's Azure DevOps 'Secrets' group. There is deliberately no default: a SAS token is a live
+    // credential and does not belong in source. When it is missing the Velopack targets log a
+    // warning and skip the download/upload rather than failing the build.
+    [Parameter, Secret] string AzureBlobSasToken =>
+        ResolveSasToken(TryGetValue(() => AzureBlobSasToken), Environment.GetEnvironmentVariable);
 
     /// <summary>
-    /// First non-blank value, or "". Plain ?? is not enough here: an unset Azure DevOps macro
-    /// arrives as the literal string "$(SomeName)" and an unmapped one as "", and both are
-    /// non-null, so they would shadow a later source that actually holds the token.
+    /// Names older CI definitions still map the token to. They are read so a repository that has
+    /// not been updated keeps publishing - dropping them would not fail its build, it would skip
+    /// the upload with a warning and stop shipping installers - but each use logs a warning
+    /// naming the variable to rename.
+    /// </summary>
+    internal static readonly string[] LegacySasTokenVariables = ["AZURE_BLOB_SAS_TOKEN_LOCAL", "AZUREBLOBSASTOKEN"];
+
+    internal static string ResolveSasToken(string? parameter, Func<string, string?> getEnvironmentVariable)
+    {
+        var token = Coalesce(parameter, getEnvironmentVariable("AZURE_BLOB_SAS_TOKEN"));
+        if (token.Length > 0)
+            return token;
+
+        foreach (var legacy in LegacySasTokenVariables)
+        {
+            token = Coalesce(getEnvironmentVariable(legacy));
+            if (token.Length == 0)
+                continue;
+
+            Serilog.Log.Warning("The blob SAS token came from {Legacy}; map it to AZURE_BLOB_SAS_TOKEN instead", legacy);
+            return token;
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// The value, or "" when it is blank or an unexpanded Azure DevOps macro. Plain ?? is not
+    /// enough here: an undefined Azure DevOps variable arrives as the literal string "$(Name)"
+    /// and an unmapped one as "", and both are non-null.
     /// </summary>
     internal static string Coalesce(params string?[] values)
     {
@@ -52,8 +69,8 @@ public interface IHasVelopack: IFalloutBuild
             if (string.IsNullOrWhiteSpace(value))
                 continue;
 
-            // An unexpanded Azure DevOps macro, e.g. "$(AzureBlobToken)" when the variable group
-            // has no such variable. Treat it as absent rather than handing it to vpk as a token.
+            // An unexpanded Azure DevOps macro, e.g. "$(AZURE_BLOB_SAS_TOKEN)" when the variable
+            // group has no such variable. Treat it as absent rather than handing it to vpk as a token.
             if (value.StartsWith("$(", StringComparison.Ordinal) && value.EndsWith(")", StringComparison.Ordinal))
                 continue;
 

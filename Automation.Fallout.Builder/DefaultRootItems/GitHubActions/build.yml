@@ -63,20 +63,21 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
+      
       # ----------------------------------------------------------------
-      # Setup: Install the workloads the solution needs
+      # Setup: Mobile workloads only if needed
       # ----------------------------------------------------------------
-      # Fallout's Clean and Compile targets walk the whole solution, so a head whose
-      # workload is missing (android, ios, wasm-tools) fails with NETSDK1147 before
-      # anything compiles. setup-dotnet installs an SDK but never its workloads, and
-      # workloads are per-feature-band — so a solution that builds on one SDK band can
-      # fail on the next one purely because the runner has no manifests for it.
-      # No argument: this restores whatever the solution in the working directory needs.
-      #- name: Restore .NET workloads
-      #  run: dotnet workload restore
-      #  shell: pwsh
-
+      # Only solutions with mobile/native heads need workloads. The check is a heuristic on
+      # project files; `dotnet workload restore` itself is what decides exactly what to install.
+      - name: Restore .NET workloads
+        shell: pwsh
+        run: |
+          $pattern = 'net\d+\.\d+-(android|ios|maccatalyst|macos|tvos)|<UseMaui>true|<RunAOTCompilation>true|<WasmBuildNative>true'
+          $needs = Get-ChildItem -Recurse -File -Include *.csproj, *.fsproj, Directory.Build.props |
+          Select-String -Pattern $pattern -Quiet
+          if ($needs) { dotnet workload restore } else { Write-Host 'No workload-dependent projects; skipping workload restore.' }
+          
+          
       # ----------------------------------------------------------------
       # Setup: Authenticate to GitHub Packages
       #           dotnet nuget add source --username ${{ github.actor }} --password ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || echo "Package source already exists or failed to add, continuing..."
@@ -96,16 +97,15 @@ jobs:
       #   4. TagRelease (if main branch)
       # ----------------------------------------------------------------
       # The SAS token is mapped through env: rather than passed on the command line, where it
-      # would show up in process listings on the runner. Fallout resolves it from any of
-      # AZURE_BLOB_SAS_TOKEN_LOCAL, AZUREBLOBSASTOKEN or AZURE_BLOB_SAS_TOKEN; an unset secret
-      # expands to empty, in which case the Velopack targets warn and skip the upload.
+      # would show up in process listings on the runner. An unset secret expands to empty, in
+      # which case the Velopack targets warn and skip the upload.
       - name: Execute Fallout Build
         run: |
           dotnet tool restore
           dotnet run --project .\build\_build.csproj -- --artifacts-directory-param "${{ github.workspace }}\artifacts" --github-owner "${{ github.repository_owner }}"
         shell: pwsh
         env:
-          AZURE_BLOB_SAS_TOKEN_LOCAL: ${{ secrets.AZURE_BLOB_SAS_TOKEN }}
+          AZURE_BLOB_SAS_TOKEN: ${{ secrets.AZURE_BLOB_SAS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
           # IPublishBlazorWasm clones the separate static-site repo, which the job's own
           # GITHUB_TOKEN cannot reach — it needs a PAT with repo scope on that repo.
@@ -147,26 +147,6 @@ jobs:
             echo "Coverage file not found"
           }
       
-      #      - name: Create Coverage Badge
-      #        if: always() && github.ref == 'refs/heads/main'
-      #        uses: schneegans/dynamic-badges-action@v1.7.0
-      #        with:
-      #          auth: ${{ secrets.GIST_SECRET }}
-      #          gistID: YOUR_GIST_ID_HERE
-      #          filename: coverage-badge.json
-      #          label: coverage
-      #          message: ${{ steps.coverage.outputs.percentage }}%
-      #          color: ${{ steps.coverage.outputs.percentage >= 80 && 'brightgreen' || steps.coverage.outputs.percentage >= 60 && 'yellow' || 'red' }}
-      
-      #     - name: Upload Coverage Report to Codecov
-      #       uses: codecov/codecov-action@v4
-      #       if: always()
-      #       continue-on-error: true
-      #       with:
-      #         files: ${{ github.workspace }}/artifacts/coverage-report/Cobertura.xml
-      #         fail_ci_if_error: false
-      #         token: ${{ secrets.CODECOV_TOKEN }}
-
       # ----------------------------------------------------------------
       # Publish: Coverage Report Artifact
       # ----------------------------------------------------------------

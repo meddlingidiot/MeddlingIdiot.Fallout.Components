@@ -34,6 +34,48 @@ public class SasTokenCoalesceTests
     }
 
     [Test]
+    public async Task The_parameter_wins_over_the_environment()
+    {
+        var token = IHasVelopack.ResolveSasToken("from-parameter", Env(("AZURE_BLOB_SAS_TOKEN", "from-env")));
+
+        await Assert.That(token).IsEqualTo("from-parameter");
+    }
+
+    [Test]
+    public async Task AZURE_BLOB_SAS_TOKEN_wins_over_the_legacy_names()
+    {
+        var token = IHasVelopack.ResolveSasToken(null, Env(
+            ("AZURE_BLOB_SAS_TOKEN", "current"),
+            ("AZURE_BLOB_SAS_TOKEN_LOCAL", "legacy"),
+            ("AZUREBLOBSASTOKEN", "older")));
+
+        await Assert.That(token).IsEqualTo("current");
+    }
+
+    /// <summary>
+    /// Most consumer workflows still map AZURE_BLOB_SAS_TOKEN_LOCAL or AZUREBLOBSASTOKEN. Dropping
+    /// them would not fail those builds - the upload would skip and installers would stop shipping.
+    /// </summary>
+    [Test]
+    [Arguments("AZURE_BLOB_SAS_TOKEN_LOCAL")]
+    [Arguments("AZUREBLOBSASTOKEN")]
+    public async Task A_legacy_name_is_still_read(string legacy)
+    {
+        var token = IHasVelopack.ResolveSasToken("$(AZURE_BLOB_SAS_TOKEN)", Env((legacy, "legacy")));
+
+        await Assert.That(token).IsEqualTo("legacy");
+    }
+
+    [Test]
+    public async Task No_token_anywhere_resolves_to_empty()
+    {
+        await Assert.That(IHasVelopack.ResolveSasToken(null, Env())).IsEqualTo("");
+    }
+
+    private static Func<string, string?> Env(params (string Name, string Value)[] variables) =>
+        name => variables.FirstOrDefault(v => v.Name == name).Value;
+
+    [Test]
     public async Task Nothing_usable_resolves_to_empty_rather_than_null()
     {
         using (Assert.Multiple())
