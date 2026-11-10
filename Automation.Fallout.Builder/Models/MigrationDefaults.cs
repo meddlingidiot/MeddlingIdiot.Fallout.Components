@@ -20,12 +20,11 @@ public static class MigrationDefaults
     /// <remarks>
     /// Bump this only when the Fallout.Common line moves. This package carries a hard dependency on
     /// one exact <see cref="FalloutCommonVersion"/>, and a pair that disagrees fails restore with
-    /// NU1605. 1.0.24 is the first release under the nuget.org id and builds against 10.4.0; the
-    /// AFTR feed's 1.0.14-beta.2 that used to sit here does not exist under this id. It still
-    /// restores beside Fallout.Common 10.5.0 (a direct pin above its floor is not a downgrade), but
-    /// move it to the first release built against 10.5.0 once that is on nuget.org.
+    /// NU1605. 1.0.31 is the first release built against Fallout.Common 10.5.0; 1.0.24 through
+    /// 1.0.30 build against 10.4.0. The AFTR feed's 1.0.14-beta.2 that once sat here does not exist
+    /// under this id.
     /// </remarks>
-    public const string ComponentsVersion = "1.0.24";
+    public const string ComponentsVersion = "1.0.31";
 
     /// <summary>
     /// The Fallout CLI package id. The tool ships under two ids: fallout.globaltool carries the
