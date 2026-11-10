@@ -10,7 +10,7 @@ public static class MigrationDefaults
     /// A blind Nuke -> Fallout rename leaves the old Nuke.Common version behind (e.g. 10.1.0), which
     /// resolves an unrelated 10.x Fallout.Common from nuget.org and fails restore with NU1605.
     /// </summary>
-    public const string FalloutCommonVersion = "10.4.0";
+    public const string FalloutCommonVersion = "10.5.0";
 
     /// <summary>
     /// The MeddlingIdiot.Fallout.Components version to pin when the project still references one of
@@ -21,7 +21,9 @@ public static class MigrationDefaults
     /// Bump this only when the Fallout.Common line moves. This package carries a hard dependency on
     /// one exact <see cref="FalloutCommonVersion"/>, and a pair that disagrees fails restore with
     /// NU1605. 1.0.24 is the first release under the nuget.org id and builds against 10.4.0; the
-    /// AFTR feed's 1.0.14-beta.2 that used to sit here does not exist under this id.
+    /// AFTR feed's 1.0.14-beta.2 that used to sit here does not exist under this id. It still
+    /// restores beside Fallout.Common 10.5.0 (a direct pin above its floor is not a downgrade), but
+    /// move it to the first release built against 10.5.0 once that is on nuget.org.
     /// </remarks>
     public const string ComponentsVersion = "1.0.24";
 
@@ -34,19 +36,21 @@ public static class MigrationDefaults
 
     /// <summary>
     /// Version of the Fallout CLI written into .config/dotnet-tools.json in place of nuke.globaltool.
-    /// Kept on <see cref="FalloutCommonVersion"/>'s line: fallout.cli has no 10.4.0 build, so pinning
+    /// Kept on <see cref="FalloutCommonVersion"/>'s line: fallout.cli has no 10.5.0 build, so pinning
     /// that id at this version fails 'dotnet tool restore'.
     /// </summary>
-    public const string GlobalToolVersion = "10.4.0";
+    public const string GlobalToolVersion = "10.5.0";
 
     public const string TargetFramework = "net10.0";
 
     /// <summary>
-    /// Fallout.Common drags in NuGet.Packaging 6.14.3, which drops NuGet.Frameworks 6.14.3.1 beside
-    /// the build host. SDK 10.0.400's MSBuild binds NuGet.Frameworks 7.9.0.0 when it evaluates
-    /// [MSBuild]::GetTargetFrameworkIdentifier, and the app-local copy wins probing, so every target
-    /// that parses a project dies with a manifest mismatch. Pinning NuGet.Packaging to the version
-    /// whose NuGet.Frameworks matches <see cref="SdkVersion"/> keeps the two in step.
+    /// SDK 10.0.400's MSBuild binds NuGet.Frameworks 7.9.0.0 when it evaluates
+    /// [MSBuild]::GetTargetFrameworkIdentifier, and the copy beside the build host wins probing, so
+    /// an older one makes every target that parses a project die with a manifest mismatch.
+    /// Fallout.Common 10.4.0 dragged in NuGet.Packaging 6.14.3 (NuGet.Frameworks 6.14.3.1) and did
+    /// exactly that. 10.5.0 depends on 7.9.0 itself, so this pin now restates what arrives
+    /// transitively; it stays explicit so a repository that overrides Fallout.Common, or a later
+    /// Fallout that moves its NuGet line, cannot drift away from <see cref="SdkVersion"/> unnoticed.
     /// </summary>
     public const string NuGetPackagingVersion = "7.9.0";
 

@@ -26,14 +26,14 @@ public class RootItemMigratorTests
     [Test]
     public async Task MigrateToolManifest_ReplacesNukeGlobalToolAndKeepsEverythingElse()
     {
-        var result = RootItemMigrator.MigrateToolManifest(NukeToolManifest, "10.4.0", out var changed);
+        var result = RootItemMigrator.MigrateToolManifest(NukeToolManifest, "10.5.0", out var changed);
 
         using (Assert.Multiple())
         {
             await Assert.That(changed).IsTrue();
             await Assert.That(result).IsNotNull();
             await Assert.That(result!).Contains("fallout.globaltool");
-            await Assert.That(result).Contains("10.4.0");
+            await Assert.That(result).Contains("10.5.0");
             await Assert.That(result).DoesNotContain("nuke.globaltool");
             // The shim command is the same under either Fallout CLI package id.
             await Assert.That(result).Contains("\"fallout\"");
@@ -52,7 +52,7 @@ public class RootItemMigratorTests
             .Replace("nuke.globaltool", "fallout.cli")
             .Replace("\"nuke\"", "\"fallout\"");
 
-        var result = RootItemMigrator.MigrateToolManifest(staleManifest, "10.4.0", out var changed);
+        var result = RootItemMigrator.MigrateToolManifest(staleManifest, "10.5.0", out var changed);
 
         using (Assert.Multiple())
         {
@@ -69,7 +69,7 @@ public class RootItemMigratorTests
             .Replace("nuke.globaltool", "fallout.globaltool")
             .Replace("\"nuke\"", "\"fallout\"");
 
-        var result = RootItemMigrator.MigrateToolManifest(alreadyMigrated, "10.4.0", out var changed);
+        var result = RootItemMigrator.MigrateToolManifest(alreadyMigrated, "10.5.0", out var changed);
 
         using (Assert.Multiple())
         {

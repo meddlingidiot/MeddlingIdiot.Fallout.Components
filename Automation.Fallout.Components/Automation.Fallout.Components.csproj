@@ -55,10 +55,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <!-- Kept at upstream's 10.4.0 rather than reverted to 11.0.18: the downgrade came with
-           the NuGet.Packaging 7.9.0 pin in build/_build.csproj, and both are on nuget.org. -->
-      <PackageReference Include="Fallout.Build" Version="10.4.0" />
-      <PackageReference Include="Fallout.Common" Version="10.4.0" />
+      <!-- On upstream's public 10.x line, not the unlisted 11.0.x one. 10.5.0 depends on
+           NuGet.Packaging 7.9.0 itself, matching the pin in build/_build.csproj. -->
+      <PackageReference Include="Fallout.Build" Version="10.5.0" />
+      <PackageReference Include="Fallout.Common" Version="10.5.0" />
       <PackageReference Include="SharpZipLib" Version="1.4.2" />
     </ItemGroup>
 

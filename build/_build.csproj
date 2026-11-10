@@ -10,12 +10,12 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Fallout.Common" Version="10.4.0" />
-    <!-- Fallout.Common pulls NuGet.Packaging 6.14.3, which puts NuGet.Frameworks 6.14.3.1 next to
-         the build host. SDK 10.0.400's MSBuild binds NuGet.Frameworks 7.9.0.0 when it evaluates
-         [MSBuild]::GetTargetFrameworkIdentifier, and the app-local copy wins probing, so project
-         parsing dies with a manifest mismatch. Pin NuGet.Packaging to the version whose
-         NuGet.Frameworks matches the SDK. Revisit when Fallout moves off NuGet 6.x. -->
+    <PackageReference Include="Fallout.Common" Version="10.5.0" />
+    <!-- SDK 10.0.400's MSBuild binds NuGet.Frameworks 7.9.0.0 when it evaluates
+         [MSBuild]::GetTargetFrameworkIdentifier, and the copy next to the build host wins probing,
+         so an older one makes project parsing die with a manifest mismatch. Fallout.Common 10.4.0
+         pulled NuGet.Packaging 6.14.3 and did exactly that; 10.5.0 depends on 7.9.0 itself. The
+         pin stays explicit so the NuGet line cannot drift from the SDK in global.json unnoticed. -->
     <PackageReference Include="NuGet.Packaging" Version="7.9.0" />
     <!-- Automation.Fallout.Components is deliberately a ProjectReference below and not a
          PackageReference: this repository builds itself with its own components, so the build has
